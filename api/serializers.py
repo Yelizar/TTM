@@ -1,4 +1,4 @@
-from .models import User
+from website.models import User
 from rest_framework import serializers, exceptions
 from django.contrib.auth import authenticate
 from django.utils.translation import ugettext_lazy as _

@@ -1,11 +1,10 @@
-from .models import User
+from website.models import User
 from .serializers import UserSerializer
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework import mixins
 from rest_framework import generics
 from django.contrib.auth.hashers import make_password
-
 
 
 class UserList(mixins.ListModelMixin,

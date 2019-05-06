@@ -1,0 +1,21 @@
+{% extends "website/base.html" %}
+{% block titel %} Sign Up {% endblock %}
+
+{% block content %}
+    <div class="in-form">
+        <form class="access-form" method="POST" action="{% url 'website:registration' %}">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="primaryAction" type="submit">Sign Up</button>
+        </form>
+        <div class="ui horizontal divider">
+            Or
+        </div>
+        <div class="access-form-choose">
+            <a href={% url 'website:registration' %}>
+                <button type="button">Log In</button>
+            </a>
+        </div>
+    </div>
+
+{% endblock %}

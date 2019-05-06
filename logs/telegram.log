@@ -1,0 +1,164 @@
+[2019-05-06 04:32:43,089]: INFO: 
+[2019-05-06 04:39:37,016]: INFO: 
+[2019-05-06 04:44:32,812]: INFO: 
+[2019-05-06 04:51:31,501]: INFO: {
+	"command": "/start"
+}
+[2019-05-06 04:52:02,197]: INFO: {
+	"message": "/start"
+}
+[2019-05-06 04:52:39,480]: INFO: {
+	"message": "/start",
+	"chat": "1",
+	"id": "1"
+}
+[2019-05-06 04:52:56,269]: INFO: {
+	"message": "/start",
+	"chat": 1,
+	"id": 1
+}
+[2019-05-06 04:53:02,934]: INFO: {
+	"message": "/start",
+	"chat": 1,
+	"id": 1
+}
+[2019-05-06 04:53:13,482]: INFO: {
+	"message": "/start",
+	"chat": "1",
+	"id": 1
+}
+[2019-05-06 04:56:24,978]: INFO: {
+	"message": "/start",
+	"chat": "1",
+	"id": 867027665
+}
+[2019-05-06 04:57:47,769]: INFO: {
+	"message": "/start",
+	"chat": "1",
+	"id": 867027665
+}
+[2019-05-06 04:58:11,753]: INFO: {
+	"message": "/start",
+	"chat": "1",
+	"id": 867027665
+}
+[2019-05-06 05:20:52,645]: INFO: {
+	"message": {
+		"data": 12121234,
+		"text": "help",
+		"from": {
+			"username": "Laz",
+			"first_name": "Elik",
+			"id": 123123
+		},
+		"message_id": 1,
+		"chat":{
+			"username": "Laz",
+			"first_name": "Laz",
+			"type": "private",
+			"id": "867027665"
+		}
+		
+	},
+	"update_id": "867027665"
+}
+[2019-05-06 05:23:02,149]: INFO: {
+	"message": {
+		"data": 12121234,
+		"text": "help",
+		"from": {
+			"username": "Laz",
+			"first_name": "Elik",
+			"id": 189615235
+		},
+		"message_id": 1,
+		"chat":{
+			"username": "Laz",
+			"first_name": "Laz",
+			"type": "private",
+			"id": "189615235"
+		}
+		
+	},
+	"update_id": "867027665"
+}
+[2019-05-06 05:23:26,483]: INFO: {
+	"message": {
+		"data": 12121234,
+		"text": "/start",
+		"from": {
+			"username": "Laz",
+			"first_name": "Elik",
+			"id": 189615235
+		},
+		"message_id": 1,
+		"chat":{
+			"username": "Laz",
+			"first_name": "Laz",
+			"type": "private",
+			"id": "189615235"
+		}
+		
+	},
+	"update_id": "867027665"
+}
+[2019-05-06 05:24:04,577]: INFO: {
+	"message": {
+		"data": 12121235,
+		"text": "/start",
+		"from": {
+			"username": "Laz",
+			"first_name": "Elik",
+			"id": 189615235
+		},
+		"message_id": 1,
+		"chat":{
+			"username": "Laz",
+			"first_name": "Laz",
+			"type": "private",
+			"id": "189615235"
+		}
+		
+	},
+	"update_id": "867027665"
+}
+[2019-05-06 05:25:18,768]: INFO: {
+	"message": {
+		"data": 12121235,
+		"text": "feed",
+		"from": {
+			"username": "Laz",
+			"first_name": "Elik",
+			"id": 189615235
+		},
+		"message_id": 1,
+		"chat":{
+			"username": "Laz",
+			"first_name": "Laz",
+			"type": "private",
+			"id": "189615235"
+		}
+		
+	},
+	"update_id": "867027665"
+}
+[2019-05-06 06:05:48,628]: INFO: {
+	"message": {
+		"data": 12121235,
+		"text": "feed",
+		"from": {
+			"username": "Laz",
+			"first_name": "Elik",
+			"id": 189615235
+		},
+		"message_id": 1,
+		"chat":{
+			"username": "Laz",
+			"first_name": "Laz",
+			"type": "private",
+			"id": "189615235"
+		}
+		
+	},
+	"update_id": "867027665"
+}

@@ -19,6 +19,7 @@ TelegramBot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
 logger = logging.getLogger('telegram.bot')
 
 
+
 def _display_help():
     return render_to_string('py_planet/help.md')
 
@@ -29,6 +30,7 @@ def _display_planetpy_feed():
 
 class CommandReceiveView(View):
     def post(self, request, bot_token):
+        print(bot_token or "None")
         if bot_token != settings.TELEGRAM_BOT_TOKEN:
             return HttpResponseForbidden('Invalid token')
 

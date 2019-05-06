@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'py_planet',
+    'bot',
+    'api',
 
     #rest apps
     'rest_framework',
@@ -116,6 +117,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTH_USER_MODEL = "api.User"
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
@@ -137,7 +140,8 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 # telegram bot config
-TELEGRAM_BOT_TOKEN = env.str('TELEGRAM_BOT_TOKEN', 'test')
+# TELEGRAM_BOT_TOKEN = env.str('TELEGRAM_BOT_TOKEN', 'test')
+TELEGRAM_BOT_TOKEN = '867027665:AAGdRxN7xHNussXH5BvOTj_tvVXv_RGzvE4'
 
 LOGGING = {
     'version': 1,

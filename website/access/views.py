@@ -1,8 +1,7 @@
 from django.shortcuts import render
 from django.views import View
 from django.contrib.auth import authenticate, login, logout
-
-from .models import User
+from django.contrib.auth.models import User
 from .forms import RegistrationForm
 
 
@@ -19,16 +18,17 @@ class Registration(View):
         form = RegistrationForm(request.POST)
 
         if form.is_valid():
-            user = form.save(commit=False)
-            username = form.cleaned_data['username']
-            password = form.cleaned_data['password']
-            role = form.cleaned_data['role']
-            user_email = form.cleaned_data['email']
+            form.save(commit=True)
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password1')
+            user = authenticate(username=username, password=password)
 
-            user_obj = User.objects.get(username=username)
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
 
-            user = form.save(commit=True)
-            user_obj.save()
-
-            user_auth = authenticate(request, username=username, password=password)
         return render(request, template, locals())
+
+
+def logout_view(request):
+    logout(request)
+    return render(request, 'website/access/registration.html')
+

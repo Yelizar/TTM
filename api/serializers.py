@@ -1,4 +1,4 @@
-from website.models import User
+from django.contrib.auth.models import User
 from rest_framework import serializers, exceptions
 from django.contrib.auth import authenticate
 from django.utils.translation import ugettext_lazy as _
@@ -7,7 +7,7 @@ from django.utils.translation import ugettext_lazy as _
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('username', 'password', 'email', 'first_name', 'last_name', 'role')
+        fields = ('username', 'password', 'email', 'first_name', 'last_name')
 
 
 class LoginUserSerializer(serializers.Serializer):
@@ -31,11 +31,6 @@ class LoginUserSerializer(serializers.Serializer):
         password = attrs.get('password')
 
         user = None
-        if username:
-            try:
-                user = User.objects.get(username=username)
-            except User.DoesNotExist:
-                pass
 
         if username:
             user = self._validate_username(username, password)

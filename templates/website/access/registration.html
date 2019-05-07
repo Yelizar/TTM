@@ -3,7 +3,7 @@
 
 {% block content %}
     <div class="in-form">
-        <form class="access-form" method="POST" action="{% url 'website:registration' %}">
+        <form class="access-form" method="POST" action="{% url 'access:registration' %}">
             {% csrf_token %}
             {{ form.as_p }}
             <button class="primaryAction" type="submit">Sign Up</button>
@@ -11,11 +11,19 @@
         <div class="ui horizontal divider">
             Or
         </div>
-        <div class="access-form-choose">
-            <a href={% url 'website:registration' %}>
-                <button type="button">Log In</button>
-            </a>
-        </div>
+
+    <div class="">
+    <h1>OAuth</h1>
+    {% if user.is_authenticated %}
+      <p>Logged as {{ user.username }}</p>
+      <a class="btn btn-primary" href="{% url 'access:logout' %}">Logout</a>
+    {% else %}
+      <a class="btn btn-primary" href="{% url 'access:social:begin' 'google-oauth2' %}">
+        Login
+      </a>
+    {% endif %}
+  </div>
     </div>
+
 
 {% endblock %}

@@ -35,6 +35,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    # default
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -44,11 +45,13 @@ INSTALLED_APPS = [
     # user's apps
     'bot',
     'api',
-    'website',
+    'website.access',
     # rest apps
     'rest_framework',
     'rest_framework.authtoken',
     'rest_auth',
+    # oauth
+    'social_django'
 ]
 
 MIDDLEWARE = [
@@ -59,6 +62,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
 ]
 
 ROOT_URLCONF = 'ttm.urls'
@@ -96,6 +100,9 @@ DATABASES = {
         'PASSWORD': 'Elik1993',
         'HOST': '127.0.0.1',
         'PORT': '3306'
+    },
+    'OPTIONS': {
+        'init_command': 'SET storage_engine=INNODB; SET names "utf8"'
     }
 }
 
@@ -117,8 +124,6 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
-AUTH_USER_MODEL = "website.User"
 
 
 # Internationalization
@@ -211,3 +216,24 @@ REST_AUTH_SERIALIZERS = {
     'LOGIN_SERIALIZER': 'base.serializers.LoginUserSerializer',
     # 'USER_DETAILS_SERIALIZER': 'base.'
 }
+
+# OAuth2 - Gmail
+AUTHENTICATION_BACKENDS = (
+    'social_core.backends.google.GoogleOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
+)
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '676276065091-1vmn0adcthor6l2g7jrqlpl8ea7h9hq4.apps.googleusercontent.com'
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '3Kle4uRwhwQ-4S7hHvaszTWr'
+SOCIAL_AUTH_URL_NAMESPACE = 'access:social'
+
+LOGIN_URL = '/auth/login/google-oauth2/'
+
+LOGIN_REDIRECT_URL = '/web/access/reg'
+LOGOUT_REDIRECT_URL = '/'
+
+
+
+
+
+

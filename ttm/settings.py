@@ -19,17 +19,18 @@ root = environ.Path(__file__) - 2
 env = environ.Env(DEBUG=(bool, False))
 environ.Env.read_env()
 BASE_DIR = str(root)
+DEBUG = env('DEBUG')
+TEMPLATE_DEBUG = DEBUG
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env.str('SECRET_KEY', 'my-santa-claus')
+SECRET_KEY = env.str('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = tuple(env.list('ALLOWED_HOSTS', default=[]))
 
 
 # Application definition
@@ -94,17 +95,8 @@ WSGI_APPLICATION = 'ttm.wsgi.application'
 
 
 # DB currently on local machine
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': '',
-        'USER': '',
-        'PASSWORD': '',
-        'HOST': '',
-        'PORT': '',
-
-    },
+    'default': env.db(),
 }
 
 

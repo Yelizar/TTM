@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from website.access.models import CustomUser
 from .serializers import UserSerializer
 from rest_framework import status
 from rest_framework.response import Response
@@ -10,7 +10,7 @@ from django.contrib.auth.hashers import make_password
 class UserList(mixins.ListModelMixin,
                   mixins.CreateModelMixin,
                   generics.GenericAPIView):
-    queryset = User.objects.all()
+    queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
 
     def get(self, request, *args, **kwargs):
@@ -30,7 +30,7 @@ class UserDetail(mixins.RetrieveModelMixin,
                     mixins.UpdateModelMixin,
                     mixins.DestroyModelMixin,
                     generics.GenericAPIView):
-    queryset = User.objects.all()
+    queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
 
     def get(self, request, *args, **kwargs):

@@ -16,7 +16,7 @@ import environ
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 # BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 root = environ.Path(__file__) - 2
-env = environ.Env(DEBUG=(bool, False))
+env = environ.Env(DEBUG=(bool, True))
 environ.Env.read_env()
 BASE_DIR = str(root)
 
@@ -98,12 +98,13 @@ WSGI_APPLICATION = 'ttm.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': '',
-        'USER': '',
-        'PASSWORD': '',
-        'HOST': '',
-        'PORT': '',
-
+        'NAME': 'ttm',
+        'USER': 'Laz',
+        'PASSWORD': 'Elik1993',
+        'HOST': '127.0.0.1',
+        'PORT': '3306',
+        'OPTIONS': {
+            'init_command': 'SET names "utf8"'}
     },
 }
 

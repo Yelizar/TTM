@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'bot',
     'api',
     'website.access',
+    'website.session',
     # rest apps
     'rest_framework',
     'rest_framework.authtoken',
@@ -82,6 +83,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+            ],
+            'builtins': [
+                'templatetags.get_users_online',
             ],
         },
     },
@@ -225,8 +229,7 @@ LOGIN_URL = '/auth/login/google-oauth2/'
 LOGIN_REDIRECT_URL = 'access:registration3'
 LOGOUT_REDIRECT_URL = '/'
 
-
-
-
-
-
+# Session
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 900

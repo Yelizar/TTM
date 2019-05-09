@@ -1,0 +1,37 @@
+{% extends "website/base.html" %}
+{% block titel %} Profile {% endblock %}
+{% block content %}
+    <h5> Profile page </h5>
+    {% if user.is_authenticated %}
+        <p>Username: {{ object.username }}</p>
+        <p>First Name: {{ object.first_name }}</p>
+        <p>Last Name: {{ object.last_name }}</p>
+        <p>Email: {{ object.email }}</p>
+        <p>Role: {{ object.role }}</p>
+        <p>Last Login: {{ object.last_login }}</p>
+        <p>Time now: {{ now }}</p>
+        <br>
+        <br>
+        {% if object.role == 'Student' %}
+            <p>Find tutors online</p>
+            <button class="primaryAction" type="submit"><a href="{% url 'session:search' %}">Find</a></button>
+            <br>
+        {% elif object.role == 'Tutor' %}
+            <p>Tutors don't have rights to look student for</p>
+        {% endif %}
+    {% else %}
+        You are not authorized. Please log in or register on the website
+        <button class="primaryAction" type="submit"><a href="{% url 'access:registration' %}">Registration</a></button>
+        OR
+        <button class="primaryAction" type="submit"><a href="{% url 'access:login' %}">Login</a></button>
+        <h1>OAuth</h1>
+        <a class="btn btn-primary" href="{% url 'access:social:begin' 'google-oauth2' %}">
+            Login with Gmail
+        </a>
+    {% endif %}
+    <button class="primaryAction" type="submit"><a  href="{% url 'access:home' %}" > Home </a></button>
+    <button class="primaryAction" type="submit"><a  href="{% url 'access:logout' %}" > Logout </a></button>
+
+
+
+{% endblock %}

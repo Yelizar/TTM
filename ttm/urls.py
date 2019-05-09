@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/', include('api.urls')),
     # temporary "pattern" of url
     path('', include('website.access.urls')),
+    path('session/', include('website.session.urls'))
 
 ]
 

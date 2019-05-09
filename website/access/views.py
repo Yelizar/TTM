@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, reverse
 from django.views import View
 from django.contrib.auth import authenticate, login, logout
 from .models import CustomUser
@@ -100,7 +100,7 @@ class LoginView(View):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            return redirect('access:home')
+            return redirect(reverse('session:profile', kwargs={'pk': user.id}))
         return render(request, template, locals())
 
 

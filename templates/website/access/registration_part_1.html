@@ -1,0 +1,25 @@
+{% extends "website/base.html" %}
+{% block titel %} Sign Up 1 {% endblock %}
+
+{% block content %}
+    <div class="in-form">
+        <form class="access-form" method="POST" action="{% url 'access:registration' %}">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="primaryAction" type="submit">Next Step</button>
+        </form>
+    </div>
+    {% if user.is_authenticated %}
+        <p>Logged as {{ user.username }}</p>
+        <a class="btn btn-primary" href="{% url 'access:logout' %}">Logout</a>
+    {% else %}
+        <p></p>
+        OR
+
+        <button class="primaryAction" type="submit"><a  href="{% url 'access:social:begin' 'google-oauth2' %}">
+            Login with Gmail
+        </a></button>
+
+    {% endif %}
+
+{% endblock %}

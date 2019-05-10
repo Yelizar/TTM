@@ -1,0 +1,21 @@
+{% extends "website/base.html" %}
+{% block titel %} Home {% endblock %}
+
+{% block content %}
+    <h5> Temporary Home Page </h5>
+    {% if user.is_authenticated %}
+        <p>Logged as {{ user.username }}</p>
+        <button class="primaryAction" type="submit"><a  href="{% url 'session:profile' user.id %}" >Profile</a></button>
+         <button class="primaryAction" type="submit"><a  href="{% url 'access:logout' %}" >
+            Logout </a></button>
+    {% else %}
+        <button class="primaryAction" type="submit"><a href="{% url 'access:registration' %}">Registration</a></button>
+        OR
+        <button class="primaryAction" type="submit"><a href="{% url 'access:login' %}">Login</a></button>
+        <h1>OAuth</h1>
+        <a class="btn btn-primary" href="{% url 'access:social:begin' 'google-oauth2' %}">
+            Login with Gmail
+        </a>
+    {% endif %}
+
+{% endblock %}

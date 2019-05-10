@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, reverse
 from django.views import View
 from django.contrib.auth import authenticate, login, logout
-from .models import CustomUser
+from .models import CustomUser, TutorDetails
 from .forms import *
 
 
@@ -78,6 +78,9 @@ class RegistrationPart3View(View):
                 user = CustomUser.objects.get(pk=request.user.id)
                 user.role = form.cleaned_data.get('role')
                 user.save()
+                if user.role == 'Tutor':
+                    obj, created = TutorDetails.objects.get_or_create(user_id=user.id)
+                    return redirect(reverse('session:update-tutor-details', kwargs={'pk': obj.user_id}))
                 return redirect('access:home')
             except CustomUser.DoesNotExist:
                 print("Error")
@@ -100,6 +103,10 @@ class LoginView(View):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
+            # if user.first_name:
+            #     redirect('access:registration2')
+            # elif not user.role:
+            #     redirect('access:registration3')
             return redirect(reverse('session:profile', kwargs={'pk': user.id}))
         return render(request, template, locals())
 

@@ -153,8 +153,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # telegram bot config
-# TELEGRAM_BOT_TOKEN = env.str('TELEGRAM_BOT_TOKEN', 'test')
-TELEGRAM_BOT_TOKEN = '867027665:AAGdRxN7xHNussXH5BvOTj_tvVXv_RGzvE4'
+TELEGRAM_BOT_TOKEN = env.str('TELEGRAM_BOT_TOKEN')
 
 LOGGING = {
     'version': 1,

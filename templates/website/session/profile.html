@@ -1,23 +1,35 @@
 {% extends "website/base.html" %}
 {% block titel %} Profile {% endblock %}
 {% block content %}
-    <h5> Profile page </h5>
+    <h4> Profile page </h4>
     {% if user.is_authenticated %}
-        <p>Username: {{ object.username }}</p>
-        <p>First Name: {{ object.first_name }}</p>
-        <p>Last Name: {{ object.last_name }}</p>
-        <p>Email: {{ object.email }}</p>
-        <p>Role: {{ object.role }}</p>
-        <p>Last Login: {{ object.last_login }}</p>
-        <p>Time now: {{ now }}</p>
-        <br>
-        <br>
-        {% if object.role == 'Student' %}
+
+        <div style="float: left; width: 50%;">
+            <h5>General Profile details</h5>
+            <p>Username: {{ user.username }}</p>
+            <p>First Name: {{ user.first_name }}</p>
+            <p>Last Name: {{ user.last_name }}</p>
+            <p>Email: {{ user.email }}</p>
+            <p>Role: {{ user.role }}</p>
+            <p>Account created: {{ user.date_joined }}</p>
+            <p>Last Login: {{ user.last_login }}</p>
+            <p>Time now: {{ now }}</p>
+        </div>
+        {% if user.role == 'Student' %}
             <p>Find tutors online</p>
             <button class="primaryAction" type="submit"><a href="{% url 'session:search' %}">Find</a></button>
             <br>
-        {% elif object.role == 'Tutor' %}
-            <p>Tutors don't have rights to look student for</p>
+        {% elif user.role == 'Tutor' %}
+
+            <div style="float: left;  width: 50%">
+                <h5>Tutor details</h5>
+                <p>DoB: {{ user.tutordetails.dob }}</p>
+                <p>CV: {{ user.tutordetails.cv_name }}</p>
+                <p>Resume: {{ user.tutordetails.short_resume }}</p>
+                <p>Phone: {{ user.tutordetails.phone_number }}</p>
+            </div>
+            <button class="primaryAction" type="submit"><a href="{% url 'session:update-tutor-details' user.tutordetails.user_id %}">Edit</a></button>
+
         {% endif %}
     {% else %}
         You are not authorized. Please log in or register on the website
@@ -29,9 +41,10 @@
             Login with Gmail
         </a>
     {% endif %}
-    <button class="primaryAction" type="submit"><a  href="{% url 'access:home' %}" > Home </a></button>
-    <button class="primaryAction" type="submit"><a  href="{% url 'access:logout' %}" > Logout </a></button>
-
+    <div style="float: left; width: 100%; margin-top: 150px">
+        <button class="primaryAction" type="submit"><a href="{% url 'access:home' %}"> Home </a></button>
+        <button class="primaryAction" type="submit"><a href="{% url 'access:logout' %}"> Logout </a></button>
+    </div>
 
 
 {% endblock %}

@@ -21,7 +21,7 @@ logger = logging.getLogger('telegram.bot')
 
 
 def _display_help():
-    return render_to_string('py_planet/help.md')
+    return render_to_string('talktome/help.md')
 
 
 def _display_planetpy_feed():

@@ -4,6 +4,8 @@ import json
 import logging
 
 import telepot
+from telebot import types
+
 from django.template.loader import render_to_string
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse
 from django.views.generic import View
@@ -19,13 +21,52 @@ TelegramBot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
 logger = logging.getLogger('telegram.bot')
 
 
+class LanguageSet(object):
+    LANG_UNKNOWN = 0
+    LANG_ENG = 1
+    LANG_RUS = 2
+    LANG_OTHER = 3
 
-def _display_help():
-    return render_to_string('talktome/help.md')
+class UserRole(object):
+    USER_ADMIN = 0
+    USER_NEWB = 1
+    USER_LEARNER = 2
+    USER_TUTOR = 3
+
+Users = {}
+
+class User(object):
+    def __init__(self):
+        self.nativeLang = LanguageSet.LANG_UNKNOWN
+        self.communicationLang = LanguageSet.LANG_ENG
+        self.role = UserRole.USER_NEWB
+        self.bannedByAdmin = False
 
 
-def _display_planetpy_feed():
-    return render_to_string('py_planet/feed.md', {'items': parse_planetpy_rss()})
+def _display_help(chat_id):
+
+    handlers = {
+        UserRole.USER_ADMIN: 'talktome/admin.md',
+        UserRole.USER_NEWB: 'talktome/help.md',
+        UserRole.USER_LEARNER: 'talktome/learner.md',
+        UserRole.USER_TUTOR: 'talktome/tutor.md',
+    }
+
+    if chat_id in Users:
+        markup = None
+        role = Users[chat_id].role
+    else:
+        markup = types.ReplyKeyboardMarkup()
+        markup.row("Leaner", "Tutor")
+        role = UserRole.USER_NEWB
+
+    file_name = handlers.get(role)
+    message = render_to_string(file_name)
+    TelegramBot.sendMessage(chat_id, message, parse_mode='Markdown', reply_markup=markup)
+
+def _display_planetpy_feed(chat_id):
+    message = render_to_string('py_planet/feed.md', {'items': parse_planetpy_rss()})
+    TelegramBot.sendMessage(chat_id, message, parse_mode='Markdown')
 
 
 class CommandReceiveView(View):
@@ -36,7 +77,7 @@ class CommandReceiveView(View):
 
         commands = {
             '/start': _display_help,
-            'help': _display_help,
+            '/help': _display_help,
             'feed': _display_planetpy_feed,
         }
 
@@ -53,7 +94,7 @@ class CommandReceiveView(View):
 
             func = commands.get(cmd.split()[0].lower())
             if func:
-                TelegramBot.sendMessage(chat_id, func(), parse_mode='Markdown')
+                TelegramBot.sendMessage(chat_id, func(chat_id), parse_mode='Markdown')
             else:
                 TelegramBot.sendMessage(chat_id, 'I do not understand you, Sir!')
 

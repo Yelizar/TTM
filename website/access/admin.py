@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, TutorDetails
+from .models import CustomUser, TutorDetails, TutorStatus
 from django.utils.translation import gettext, gettext_lazy as _
 
 
@@ -8,11 +8,23 @@ class TutorDetailsInline(admin.TabularInline):
     model = TutorDetails
 
 
+class TutorStatusInline(admin.TabularInline):
+    model = TutorStatus
+
+
 class TutorDetailsAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {'fields': ('user',)}),
         (_('Details'), {'fields': ('phone_number', 'dob', 'cv', 'short_resume')}),
     )
+
+
+class TutorStatusAdmin(admin.ModelAdmin):
+    fieldsets = (
+        (None, {'fields': ('user',)}),
+        (None, {'fields': ('is_active',)}),
+    )
+    list_display = ('user', 'is_active',)
 
 
 class CustomUserAdmin(UserAdmin):
@@ -30,12 +42,13 @@ class CustomUserAdmin(UserAdmin):
 
     def get_inline_instances(self, request, obj=None):
         if obj.role == 'Tutor':
-            inlines = [TutorDetailsInline]
+            inlines = [TutorDetailsInline, TutorStatusInline]
             return [inline(self.model, self.admin_site) for inline in inlines]
         else:
             return [inline(self.model, self.admin_site) for inline in self.inlines]
 
 
+admin.site.register(TutorStatus, TutorStatusAdmin)
 admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(TutorDetails, TutorDetailsAdmin)
 

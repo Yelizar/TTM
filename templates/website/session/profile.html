@@ -4,7 +4,7 @@
     <h4> Profile page </h4>
     {% if user.is_authenticated %}
 
-        <div style="float: left; width: 50%;">
+        <div style="float: left; width: 50%; height: 500px">
             <h5>General Profile details</h5>
             <p>Username: {{ user.username }}</p>
             <p>First Name: {{ user.first_name }}</p>
@@ -28,8 +28,29 @@
                 <p>Resume: {{ user.tutordetails.short_resume }}</p>
                 <p>Phone: {{ user.tutordetails.phone_number }}</p>
             </div>
-            <button class="primaryAction" type="submit"><a href="{% url 'session:update-tutor-details' user.tutordetails.user_id %}">Edit</a></button>
-
+            <button class="primaryAction" type="submit"><a
+                    href="{% url 'session:update-tutor-details' user.tutordetails.user_id %}">Edit</a></button>
+            {% if user.tutordetails.is_active %}
+                <p>Dear Tutor, yours details has been approved by manager.<br>
+                    Now you are able to change your status.</p>
+                {% if user.tutorstatus.is_active %}
+                    You are in standby student mode
+                    <form class="access-form" method="POST" action="">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <button class="primaryAction" type="submit">Submit</button>
+                </form>
+                    {% else %}
+                    Check the tick to be searchable by students
+                    <form class="access-form" method="POST" action="">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <button class="primaryAction" type="submit">Submit</button>
+                {% endif %}
+            {% else %}
+                <p>Dear Tutor, yours details still hasn't been approved.<br>
+                    You'll receive an email when our manager finishes your case.</p>
+            {% endif %}
         {% endif %}
     {% else %}
         You are not authorized. Please log in or register on the website

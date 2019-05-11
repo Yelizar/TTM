@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, reverse
 from django.views import View
 from django.contrib.auth import authenticate, login, logout
-from .models import CustomUser, TutorDetails
+from .models import TutorDetails
 from .forms import *
 
 

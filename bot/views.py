@@ -74,10 +74,12 @@ def _tutor_register(chat_id):
 def _admin_dump(chat_id):
     with open('talktome.users.json', mode='w', encoding='utf-8') as f:
         json.dump(Users, f, indent=2)
+    return "Saved {} users' items".format(len(Users))
 
 def _admin_load(chat_id):
     with open('talktome.users.json', mode='r', encoding='utf-8') as f:
         Users = json.load(f)
+    return "Loaded {} users' items".format(len(Users))
 
 class CommandReceiveView(View):
     def post(self, request, bot_token):

@@ -4,7 +4,6 @@ import json
 import logging
 
 import telepot
-from telepot.namedtuple import ReplyKeyboardMarkup, KeyboardButton
 
 from django.template.loader import render_to_string
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse
@@ -61,7 +60,7 @@ def _display_help(chat_id):
     return render_to_string(file_name)
 
 def _display_planetpy_feed(chat_id):
-    return render_to_string('py_planet/feed.md', {'items': parse_planetpy_rss()})
+    return render_to_string('talktome/link_list.md', {'items': parse_planetpy_rss()})
 
 def _learner_register(chat_id):
     Users[chat_id]['role'] = UserRole.USER_LEARNER
@@ -81,6 +80,26 @@ def _admin_load(chat_id):
         Users = json.load(f)
     return "Loaded {} users' items".format(len(Users))
 
+
+def _tutor_pending_list():
+    """Output first 10 tutors from pending list
+    """
+    items = []
+
+    for u_key, u_value in Users.iteritems():
+        if u_value['role'] == UserRole.USER_TUTOR:
+            item = {}
+            item['title'] = u_key
+            item['link'] = u_value['role']
+
+            items.append(item)
+
+    return items[:10]
+
+def _admin_display_denping_list(chat_id):
+    return render_to_string('talktome/link_list.md', {'items': _tutor_pending_list()})
+
+
 class CommandReceiveView(View):
     def post(self, request, bot_token):
         print(bot_token or "None")
@@ -94,6 +113,8 @@ class CommandReceiveView(View):
             '/tutor': _tutor_register,
             '/dump': _admin_dump,
             '/load': _admin_load,
+            '/pending': _admin_display_denping_list,
+
             'feed': _display_planetpy_feed,
         }
 

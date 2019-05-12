@@ -1,13 +1,22 @@
-*Hello!*
+*Hi there!*
 
-Kia ora from Aotearoa New Zealand!
+TalkToMe нуждается в таких партнерах, как вы.
 
-What if all people who are learning English all over the world, including you, could have an opportunity to practise their English speaking skills with native speakers? Wouldn’t you feel more confident when travelling, having business trips, studying abroad and/or working in international companies? I bet you would! 
+Стань тьютором Uber и зарабатывайте деньги в качестве независимого подрядчика. Получайте еженедельный гонорар лишь за то, что помогаете пользователям приложения общаться на Английском языке. Будьте сами себе начальником и получайте оплату за работу, придерживаясь собственного графика.
+
+*Зарабатывайте хорошие деньги.*
+
+Есть доступ в Интернет? Превратите его в источник заработка! Миллионы людей учат английский язык, а с помощью TalkToMe вам будет несложно заработать на этом деньги. Начать работать можно уже сегодня.
+
+*Работайте по своему графику.*
+
+Есть дела до 9 или после 17? Как независимый подрядчик Uber, вы можете работать только тогда, когда вам удобно. Самостоятельно составьте свой график работы и не пропускайте ни одного важного события вашей жизни.
+
+*Нет ни офиса, ни начальника.*
+
+Помогаете ли вы своим родственникам или копите средства на крупную покупку — с TalkToMe вы можете быть "на работе" только тогда, когда вам это необходимо. Выбирайте сами, когда вы работаете, с кем и о чем говорите.
 
 I am a TalkToMe bot which can assist you with that.
-
-TalkToMe offers everyday based short dialogues with native speakers of English from New Zealand to improve your fluency and communication skills, build confidence and practice listening skills at the same time! 
-You will have opportunity to plan serrial sessions with a tutor or to select a tutor for each session so that your ear trains to understand different accents, pronunciation and intonation.
 
 Available commands:
 *feed* - lists 10 recent Planet Python posts

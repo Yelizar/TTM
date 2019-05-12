@@ -44,7 +44,7 @@ class User(object):
 
 class Learner(User):
     def __init__(self):
-        super(Learner,self).__init__()
+        super(Learner, self).__init__()
         self.role = UserRole.USER_LEARNER
 
 class Tutor(User):
@@ -81,7 +81,12 @@ def _tutor_register(chat_id):
     return render_to_string('talktome/tutor.md')
 
 def _admin_dump(chat_id):
-    pass
+    with open('talktome.users.json', mode='w', encoding='utf-8') as f:
+        json.dump(Users, f)
+
+def _admin_load(chat_id):
+    with open('talktome.users.json', mode='r', encoding='utf-8') as f:
+        Users = json.load(f)
 
 class CommandReceiveView(View):
     def post(self, request, bot_token):
@@ -95,6 +100,7 @@ class CommandReceiveView(View):
             '/learner': _learner_register,
             '/tutor': _tutor_register,
             '/dump': _admin_dump,
+            '/load': _admin_load,
             'feed': _display_planetpy_feed,
         }
 

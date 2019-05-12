@@ -42,6 +42,15 @@ class User(object):
         self.role = UserRole.USER_NEWB
         self.bannedByAdmin = False
 
+class Learner(User):
+    def __init__(self):
+        super(Learner,self).__init__()
+        self.role = UserRole.USER_LEARNER
+
+class Tutor(User):
+    def __init__(self):
+        super(Tutor, self).__init__()
+        self.role = UserRole.USER_TUTOR
 
 def _display_help(chat_id):
 
@@ -68,6 +77,18 @@ def _display_planetpy_feed(chat_id):
     message = render_to_string('py_planet/feed.md', {'items': parse_planetpy_rss()})
     TelegramBot.sendMessage(chat_id, message, parse_mode='Markdown')
 
+def _learner_register(chat_id):
+    Users[chat_id] = Learner()
+    message = render_to_string('talktome/admin.md')
+    TelegramBot.sendMessage(chat_id, message, parse_mode='Markdown')
+
+def _tutor_register(chat_id):
+    Users[chat_id] = Tutor()
+    message = render_to_string('talktome/admin.md')
+    TelegramBot.sendMessage(chat_id, message, parse_mode='Markdown')
+
+def _admin_dump(chat_id):
+    pass
 
 class CommandReceiveView(View):
     def post(self, request, bot_token):
@@ -78,6 +99,9 @@ class CommandReceiveView(View):
         commands = {
             '/start': _display_help,
             '/help': _display_help,
+            '/learner': _learner_register,
+            '/tutor': _tutor_register,
+            '/dump': _admin_dump,
             'feed': _display_planetpy_feed,
         }
 

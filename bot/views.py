@@ -35,23 +35,6 @@ class UserRole(object):
 
 Users = {}
 
-class User(object):
-    def __init__(self):
-        self.nativeLang = LanguageSet.LANG_UNKNOWN
-        self.communicationLang = LanguageSet.LANG_ENG
-        self.role = UserRole.USER_NEWB
-        self.bannedByAdmin = False
-
-class Learner(User):
-    def __init__(self):
-        super(Learner, self).__init__()
-        self.role = UserRole.USER_LEARNER
-
-class Tutor(User):
-    def __init__(self):
-        super(Tutor, self).__init__()
-        self.role = UserRole.USER_TUTOR
-
 def _display_help(chat_id):
 
     handlers = {
@@ -61,10 +44,18 @@ def _display_help(chat_id):
         UserRole.USER_TUTOR: 'talktome/tutor.md',
     }
 
-    if chat_id in Users:
-        role = Users[chat_id].role
-    else:
-        role = UserRole.USER_NEWB
+    if not chat_id in Users:
+        new_user = {
+            'nativeLang' : LanguageSet.LANG_UNKNOWN,
+            'communicationLang' : LanguageSet.LANG_ENG,
+            'role' : UserRole.USER_NEWB,
+            'bannedByAdmin' : False,
+        }
+
+        Users[chat_id] = new_user
+
+    role = Users[chat_id]['role']
+
 
     file_name = handlers.get(role)
     return render_to_string(file_name)
@@ -73,11 +64,11 @@ def _display_planetpy_feed(chat_id):
     return render_to_string('py_planet/feed.md', {'items': parse_planetpy_rss()})
 
 def _learner_register(chat_id):
-    Users[chat_id] = Learner()
+    Users[chat_id]['role'] = UserRole.USER_LEARNER
     return render_to_string('talktome/learner.md')
 
 def _tutor_register(chat_id):
-    Users[chat_id] = Tutor()
+    Users[chat_id]['role'] = UserRole.USER_TUTOR
     return render_to_string('talktome/tutor.md')
 
 def _admin_dump(chat_id):

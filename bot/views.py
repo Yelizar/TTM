@@ -62,30 +62,23 @@ def _display_help(chat_id):
     }
 
     if chat_id in Users:
-        markup = None
         role = Users[chat_id].role
     else:
-        markup = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text="Leaner"), KeyboardButton(text="Tutor")]])
         role = UserRole.USER_NEWB
 
     file_name = handlers.get(role)
-    message = render_to_string(file_name)
-    TelegramBot.sendMessage(chat_id, message, parse_mode='Markdown', reply_markup=markup)
+    return render_to_string(file_name)
 
 def _display_planetpy_feed(chat_id):
-    message = render_to_string('py_planet/feed.md', {'items': parse_planetpy_rss()})
-    TelegramBot.sendMessage(chat_id, message, parse_mode='Markdown')
+    return render_to_string('py_planet/feed.md', {'items': parse_planetpy_rss()})
 
 def _learner_register(chat_id):
     Users[chat_id] = Learner()
-    message = render_to_string('talktome/admin.md')
-    TelegramBot.sendMessage(chat_id, message, parse_mode='Markdown')
+    return render_to_string('talktome/learner.md')
 
 def _tutor_register(chat_id):
     Users[chat_id] = Tutor()
-    message = render_to_string('talktome/admin.md')
-    TelegramBot.sendMessage(chat_id, message, parse_mode='Markdown')
+    return render_to_string('talktome/tutor.md')
 
 def _admin_dump(chat_id):
     pass
@@ -118,7 +111,7 @@ class CommandReceiveView(View):
 
             func = commands.get(cmd.split()[0].lower())
             if func:
-                func(chat_id)
+                TelegramBot.sendMessage(chat_id, func(chat_id), parse_mode='Markdown')
             else:
                 TelegramBot.sendMessage(chat_id, 'I do not understand you, Sir!')
 

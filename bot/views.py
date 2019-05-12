@@ -86,7 +86,7 @@ def _tutor_pending_list():
     """
     items = []
 
-    for u_key, u_value in Users.iteritems():
+    for u_key, u_value in Users.items():
         if u_value['role'] == UserRole.USER_TUTOR:
             item = {}
             item['title'] = u_key

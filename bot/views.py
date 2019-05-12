@@ -4,7 +4,7 @@ import json
 import logging
 
 import telepot
-from telebot import types
+from telepot.namedtuple import ReplyKeyboardMarkup, KeyboardButton
 
 from django.template.loader import render_to_string
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse
@@ -47,7 +47,7 @@ def _display_help(chat_id):
 
     handlers = {
         UserRole.USER_ADMIN: 'talktome/admin.md',
-        UserRole.USER_NEWB: 'talktome/help.md',
+        UserRole.USER_NEWB: 'talktome/hello.md',
         UserRole.USER_LEARNER: 'talktome/learner.md',
         UserRole.USER_TUTOR: 'talktome/tutor.md',
     }
@@ -56,8 +56,8 @@ def _display_help(chat_id):
         markup = None
         role = Users[chat_id].role
     else:
-        markup = types.ReplyKeyboardMarkup()
-        markup.row("Leaner", "Tutor")
+        markup = ReplyKeyboardMarkup(
+            keyboard=[KeyboardButton(text="Leaner"), KeyboardButton(text="Tutor")])
         role = UserRole.USER_NEWB
 
     file_name = handlers.get(role)

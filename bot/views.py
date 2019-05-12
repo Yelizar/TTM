@@ -57,7 +57,7 @@ def _display_help(chat_id):
         role = Users[chat_id].role
     else:
         markup = ReplyKeyboardMarkup(
-            keyboard=[KeyboardButton(text="Leaner"), KeyboardButton(text="Tutor")])
+            keyboard=[[KeyboardButton(text="Leaner"), KeyboardButton(text="Tutor")]])
         role = UserRole.USER_NEWB
 
     file_name = handlers.get(role)
@@ -94,7 +94,7 @@ class CommandReceiveView(View):
 
             func = commands.get(cmd.split()[0].lower())
             if func:
-                TelegramBot.sendMessage(chat_id, func(chat_id), parse_mode='Markdown')
+                func(chat_id)
             else:
                 TelegramBot.sendMessage(chat_id, 'I do not understand you, Sir!')
 

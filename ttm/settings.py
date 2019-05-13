@@ -32,7 +32,6 @@ SECRET_KEY = env.str('SECRET_KEY')
 
 ALLOWED_HOSTS = tuple(env.list('ALLOWED_HOSTS', default=[]))
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -64,6 +63,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'website.access.middleware.ActiveUserMiddleware',
 
 ]
 
@@ -93,16 +93,21 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ttm.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
 
-# DB currently on local machine
 DATABASES = {
     'default': env.db(),
 }
 
+CACHES = {
+    'default': {
+        'BACKEND': env.str('CACHES_BACKEND'),  # https://docs.djangoproject.com/en/2.2/topics/cache/
+        'LOCATION': env.str('CACHES_LOCATION'),  # Read documentation or ask Lazarus
+
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
@@ -122,7 +127,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
 
@@ -136,14 +140,13 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
 
 STATICFILES_DIRS = (
-  os.path.join(BASE_DIR, "static", "dev"),
+    os.path.join(BASE_DIR, "static", "dev"),
 )
 
 STATIC_ROOT = os.path.join(BASE_DIR, "static", "static_root")
@@ -232,3 +235,7 @@ LOGOUT_REDIRECT_URL = '/'
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_AGE = 900
+
+# Check Online Offline user mode
+USER_ONLINE_TIMEOUT = 300
+USER_LASTSEEN_TIMEOUT = 900

@@ -29,17 +29,16 @@ class TutorStatusAdmin(admin.ModelAdmin):
 
 
 class CustomUserAdmin(UserAdmin):
-
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         (_('Personal info'), {'fields': ('first_name', 'last_name', 'email', 'role')}),
         (_('Permissions'), {
-            'fields': ('is_active', 'is_staff', 'is_superuser'), # permissions, groups
+            'fields': ('is_active', 'is_staff', 'is_superuser'),  # permissions, groups
         }),
         (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
     )
-    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'role')
-    list_filter = ('is_staff', 'is_superuser', 'is_active', 'role')
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'role', 'is_online')
+    list_filter = ('is_staff', 'is_superuser', 'is_active', 'role', 'is_online')
 
     def get_inline_instances(self, request, obj=None):
         if obj.role == 'Tutor':
@@ -52,9 +51,3 @@ class CustomUserAdmin(UserAdmin):
 admin.site.register(TutorStatus, TutorStatusAdmin)
 admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(TutorDetails, TutorDetailsAdmin)
-
-
-
-
-
-

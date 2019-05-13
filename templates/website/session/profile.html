@@ -3,66 +3,76 @@
 {% block content %}
     <h4> Profile page </h4>
     {% if user.is_authenticated %}
-
+        <table>
+            <tr>
+                <th>Last Seen</th>
+                <td>{% if object.last_seen %}{{ object.last_seen|timesince }}{% else %}awhile{% endif %} ago</td>
+            </tr>
+            <tr>
+                <th>Online</th>
+                <td>{{ object.online }}</td>
+            </tr>
+        </table>
         <div style="float: left; width: 50%; height: 500px">
             <h5>General Profile details</h5>
-            <p>Username: {{ user.username }}</p>
-            <p>First Name: {{ user.first_name }}</p>
-            <p>Last Name: {{ user.last_name }}</p>
-            <p>Email: {{ user.email }}</p>
-            <p>Role: {{ user.role }}</p>
-            <p>Account created: {{ user.date_joined }}</p>
-            <p>Last Login: {{ user.last_login }}</p>
+            <p>Username: {{ object.username }}</p>
+            <p>First Name: {{ object.first_name }}</p>
+            <p>Last Name: {{ object.last_name }}</p>
+            <p>Email: {{ object.email }}</p>
+            <p>Role: {{ object.role }}</p>
+            <p>Account created: {{ object.date_joined }}</p>
+            <p>Last Login: {{ object.last_login }}</p>
             <p>Time now: {{ now }}</p>
         </div>
-        {% if user.role == 'Student' %}
-            <p>Find tutors online</p>
-            <button class="primaryAction" type="submit"><a href="{% url 'session:search' %}">Find</a></button>
-            <br>
-        {% elif user.role == 'Tutor' %}
+        {% if request.user.id == object.id %}
+            {% if object.role == 'Student' %}
+                <p>Find tutors online</p>
+                <button class="primaryAction" type="submit"><a href="{% url 'session:search' %}">Find</a></button>
+                <br>
+            {% elif object.role == 'Tutor' %}
 
-            <div style="float: left;  width: 50%">
-                <h5>Tutor details</h5>
-                <p>DoB: {{ user.tutordetails.dob }}</p>
-                <p>CV: {{ user.tutordetails.cv_name }}</p>
-                <p>Resume: {{ user.tutordetails.short_resume }}</p>
-                <p>Phone: {{ user.tutordetails.phone_number }}</p>
-            </div>
-            <button class="primaryAction" type="submit"><a
-                    href="{% url 'session:update-tutor-details' user.tutordetails.user_id %}">Edit</a></button>
-            {% if user.tutordetails.is_active %}
-                <p>Dear Tutor, yours details has been approved by manager.<br>
-                    Now you are able to change your status.</p>
-                {% if user.tutorstatus.is_active %}
-                    You are in standby student mode
-                    <form class="access-form" method="POST" action="">
-                    {% csrf_token %}
-                    {{ form.as_p }}
-                    <button class="primaryAction" type="submit">Submit</button>
-                </form>
+                <div style="float: left;  width: 50%">
+                    <h5>Tutor details</h5>
+                    <p>DoB: {{ object.tutordetails.dob }}</p>
+                    <p>CV: {{ object.tutordetails.cv_name }}</p>
+                    <p>Resume: {{ object.tutordetails.short_resume }}</p>
+                    <p>Phone: {{ object.tutordetails.phone_number }}</p>
+                </div>
+                <button class="primaryAction" type="submit"><a
+                        href="{% url 'session:update-tutor-details' object.tutordetails.user_id %}">Edit</a></button>
+                {% if object.tutordetails.is_active %}
+                    <p>Dear Tutor, yours details has been approved by manager.<br>
+                        Now you are able to change your status.</p>
+                    {% if object.tutorstatus.is_active %}
+                        Mode: Waiting a session
                     {% else %}
-                    Check the tick to be searchable by students
+                        Mode: Do not disturb
+                    {% endif %}
                     <form class="access-form" method="POST" action="">
-                    {% csrf_token %}
-                    {{ form.as_p }}
-                    <button class="primaryAction" type="submit">Submit</button>
+                        {% csrf_token %}
+                        <input type="hidden" name="tutor_status"/>
+                        <button class="primaryAction" type="submit">Change status</button>
+                    </form>
+                {% else %}
+                    <p>Dear Tutor, yours details still hasn't been approved.<br>
+                        You'll receive an email when our manager finishes your case.</p>
                 {% endif %}
-            {% else %}
-                <p>Dear Tutor, yours details still hasn't been approved.<br>
-                    You'll receive an email when our manager finishes your case.</p>
             {% endif %}
         {% endif %}
     {% else %}
-        You are not authorized. Please log in or register on the website
-        <button class="primaryAction" type="submit"><a href="{% url 'access:registration' %}">Registration</a></button>
-        OR
-        <button class="primaryAction" type="submit"><a href="{% url 'access:login' %}">Login</a></button>
-        <h1>OAuth</h1>
-        <a class="btn btn-primary" href="{% url 'access:social:begin' 'google-oauth2' %}">
-            Login with Gmail
-        </a>
+        <div style="float: left; width: 100%; ">
+            You are not authorized. Please log in or register on the website
+            <button class="primaryAction" type="submit"><a href="{% url 'access:registration' %}">Registration</a>
+            </button>
+            OR
+            <button class="primaryAction" type="submit"><a href="{% url 'access:login' %}">Login</a></button>
+            <h1>OAuth</h1>
+            <a class="btn btn-primary" href="{% url 'access:social:begin' 'google-oauth2' %}">
+                Login with Gmail
+            </a>
+        </div>
     {% endif %}
-    <div style="float: left; width: 100%; margin-top: 150px">
+    <div style="float: left; width: 100%; margin-top: 50px">
         <button class="primaryAction" type="submit"><a href="{% url 'access:home' %}"> Home </a></button>
         <button class="primaryAction" type="submit"><a href="{% url 'access:logout' %}"> Logout </a></button>
     </div>

@@ -1,6 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
+from django.core.cache import cache
+import datetime
+from ttm import settings
 import os
 
 
@@ -8,6 +11,29 @@ class CustomUser(AbstractUser):
     ROLE = (('Student', 'Student'),
             ('Tutor', 'Tutor'))
     role = models.CharField(max_length=8, choices=ROLE, help_text='Role can\'t be changed after', null=True, blank=True)
+    is_online = models.BooleanField(default=False)
+
+    def last_seen(self):
+        return cache.get('seen_%s' % self.username)
+
+    def online(self):
+        last_seen = self.last_seen()
+        if last_seen:
+            now = datetime.datetime.now()
+            if now < last_seen + datetime.timedelta(seconds=settings.USER_ONLINE_TIMEOUT):
+                self.online_status(online=True)
+                return True
+        self.online_status(online=False)
+        return False
+
+    def online_status(self, online=False):
+        self.is_online = True if online else False
+        if not self.is_online:
+            try:
+                self.tutorstatus.tutor_status(forced_stop=True)
+            except TutorStatus.DoesNotExist:
+                pass
+        self.save()
 
 
 def tutor_directory_path(instance, filename):
@@ -52,4 +78,9 @@ class TutorStatus(models.Model):
     def __str__(self):
         return '{}'.format(self.user)
 
-
+    def tutor_status(self, forced_stop=False):
+        if forced_stop:
+            self.is_active = False
+        else:
+            self.is_active = False if self.is_active else True
+        self.save()

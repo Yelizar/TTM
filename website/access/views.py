@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, reverse
 from django.views import View
 from django.contrib.auth import authenticate, login, logout
-from .models import TutorDetails
+from .models import TutorDetails, TutorStatus
 from .forms import *
 
 
@@ -79,6 +79,7 @@ class RegistrationPart3View(View):
                 user.role = form.cleaned_data.get('role')
                 user.save()
                 if user.role == 'Tutor':
+                    TutorStatus.objects.get_or_create(user_id=user.id)
                     obj, created = TutorDetails.objects.get_or_create(user_id=user.id)
                     return redirect(reverse('session:update-tutor-details', kwargs={'pk': obj.user_id}))
                 return redirect('access:home')
@@ -112,6 +113,7 @@ class LoginView(View):
 
 
 def logout_view(request):
+    CustomUser.objects.get(id=request.user.id).online_status(online=False)
     logout(request)
     return redirect('access:home')
 

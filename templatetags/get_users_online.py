@@ -1,5 +1,6 @@
 from django import template
-from website.session.utils import get_active_tutors
+from website.access.models import CustomUser
+
 register = template.Library()
 
 
@@ -10,6 +11,6 @@ def get_users_online(pk, role):
      It should be changed if Tutor has the rights to find student
     """
     if role == 'Student':
-        users_online = get_active_tutors()
+        users_online = CustomUser.objects.filter(is_online=True, tutorstatus__is_active=True)
         return users_online.exclude(id=pk, role=role)
     return None

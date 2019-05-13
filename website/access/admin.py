@@ -15,8 +15,9 @@ class TutorStatusInline(admin.TabularInline):
 class TutorDetailsAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {'fields': ('user',)}),
-        (_('Details'), {'fields': ('phone_number', 'dob', 'cv', 'short_resume')}),
+        (_('Details'), {'fields': ('phone_number', 'dob', 'cv', 'short_resume', 'is_active')}),
     )
+    list_display = ('user', 'is_active',)
 
 
 class TutorStatusAdmin(admin.ModelAdmin):

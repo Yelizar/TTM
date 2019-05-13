@@ -2,12 +2,13 @@
 {% block titel %} Search {% endblock %}
 {% block content %}
     <h5>Temporary search tutor online page</h5>
-    {% get_users_online user.id user.role as users %}
-    {% if users %}
-        {% for user in users %}
+    {% get_users_online user.id user.role as tutors %}
+    {% if tutors %}
+        {% for tutor in tutors %}
             <div>
-                <p>Tutor username: {{ user.username }}<br>
-                    Tutor name: {{ user.get_full_name }}</p>
+                <p>Tutor username: {{ tutor.username }}<br>
+                    Tutor name: {{ tutor.get_full_name }}</p>
+            <button class="primaryAction" type="submit"><a href="{% url 'session:profile' tutor.id %}">View Profile</a></button>
             </div>
         {% endfor %}
     {% else %}

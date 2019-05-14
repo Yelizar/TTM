@@ -49,6 +49,11 @@ def _display_help(chat_id):
             'communicationLang' : LanguageSet.LANG_ENG,
             'role' : UserRole.USER_NEWB,
             'bannedByAdmin' : False,
+            'wallet' : {
+                'debugAccaunt' : 0,
+                'trialAccount' : 1,
+                'tokenAccount' : 0,
+            },
         }
 
         Users[chat_id] = new_user

@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, reverse
-from website.access.models import CustomUser, TutorDetails, TutorStatus
+from website.access.models import *
 from django.views.generic import View, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
@@ -27,7 +27,16 @@ class ProfileDetailsView(LoginRequiredMixin, View):
 class TutorDetailsUpdateView(UpdateView):
     model = TutorDetails
     fields = ['dob', 'short_resume', 'phone_number', 'cv']
-    template_name = 'website/session/update_tutor_details.html'
+    template_name = 'website/session/update_details.html'
+
+    def get_success_url(self):
+        return reverse('session:profile', kwargs={'pk': self.object.user_id})
+
+
+class StudentDetailsUpdateView(UpdateView):
+    model = StudentDetails
+    fields = ['dob', 'short_resume', 'phone_number', 'cv']
+    template_name = 'website/session/update_details.html'
 
     def get_success_url(self):
         return reverse('session:profile', kwargs={'pk': self.object.user_id})

@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.core.cache import cache
+from website.session.models import *
 import datetime
 from ttm import settings
 import os
@@ -43,6 +44,10 @@ def tutor_directory_path(instance, filename):
 class TutorDetails(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, limit_choices_to={'role': 'Tutor'},
                                 primary_key=True)
+    languages = models.ForeignKey(Languages, on_delete=models.CASCADE, default=None)
+    communication_methods = models.ForeignKey(CommunicationMethods, on_delete=models.CASCADE,
+                                              default=None, null=True, blank=True)
+
     phone_regex = RegexValidator(regex=r'^\+?1?\d{9,15}$',
                                  message="Phone number must be entered in the format:"
                                          " '+999999999'. Up to 15 digits allowed.")
@@ -84,3 +89,22 @@ class TutorStatus(models.Model):
         else:
             self.is_active = False if self.is_active else True
         self.save()
+
+
+class StudentDetails(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, limit_choices_to={'role': 'Student'},
+                                primary_key=True)
+    languages = models.ForeignKey(Languages, on_delete=models.CASCADE, default=None)
+    communication_methods = models.ForeignKey(CommunicationMethods, on_delete=models.CASCADE,
+                                              default=None, null=True, blank=True)
+
+    is_active = models.BooleanField('Approved', default=True)
+    created = models.DateTimeField(auto_now=False, auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True, auto_now_add=False)
+
+    class Meta:
+        verbose_name = 'Student\'s details'
+        verbose_name_plural = 'Student\'s details'
+
+    def __str__(self):
+        return '{}'.format(self.user)

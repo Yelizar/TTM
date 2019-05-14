@@ -1,0 +1,26 @@
+[
+  {
+    "model": "session.communicationmethods",
+    "pk": 1,
+    "fields": {
+      "method": "Skype",
+      "is_active": "True"
+    }
+  },
+  {
+    "model": "session.communicationmethods",
+    "pk": 2,
+    "fields": {
+      "method": "Telegram",
+      "is_active": "True"
+    }
+  },
+    {
+    "model": "session.communicationmethods",
+    "pk": 3,
+    "fields": {
+      "method": "Teamspeak",
+      "is_active": "True"
+    }
+  }
+]

@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, reverse
 from django.views import View
 from django.contrib.auth import authenticate, login, logout
-from .models import TutorDetails, TutorStatus
+from .models import TutorDetails, TutorStatus, StudentDetails
 from .forms import *
 
 
@@ -82,6 +82,8 @@ class RegistrationPart3View(View):
                     TutorStatus.objects.get_or_create(user_id=user.id)
                     obj, created = TutorDetails.objects.get_or_create(user_id=user.id)
                     return redirect(reverse('session:update-tutor-details', kwargs={'pk': obj.user_id}))
+                elif user.role == 'Student':
+                    StudentDetails.objects.get_or_create(user_id=user.id)
                 return redirect('access:home')
             except CustomUser.DoesNotExist:
                 print("Error")

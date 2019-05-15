@@ -7,7 +7,10 @@
         {% for tutor in tutors %}
             <div>
                 <p>Tutor username: {{ tutor.username }}<br>
-                    Tutor name: {{ tutor.get_full_name }}</p>
+                    Tutor name: {{ tutor.get_full_name }}<br>
+                    Allowed connection methods: {{ tutor.communication_methods }}<br>
+                    Language: {{ tutor.language }}
+                    </p>
             <button class="primaryAction" type="submit"><a href="{% url 'session:profile' tutor.id %}">View Profile</a></button>
             </div>
         {% endfor %}

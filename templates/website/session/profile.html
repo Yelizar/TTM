@@ -26,7 +26,7 @@
         </div>
         {% if request.user.id == object.id %}
             <div>
-            <h5>Balance:</h5>{{ object.sessioncoins.coins }}
+                <h5>Balance:</h5>{{ object.sessioncoins.coins }}
             </div>
             {% if object.role == 'Student' %}
                 <div style="float: left;  width: 50%">
@@ -34,7 +34,8 @@
                     <p>Languages: {{ object.studentdetails.languages }}</p>
                     <p>Communication Methods: {{ object.studentdetails.communication_methods }}</p>
                     <button class="primaryAction" type="submit"><a
-                            href="{% url 'session:update-student-details' object.studentdetails.user_id %}">Edit</a></button>
+                            href="{% url 'session:update-student-details' object.studentdetails.user_id %}">Edit</a>
+                    </button>
                     <p>Find tutors online</p>
                     <button class="primaryAction" type="submit"><a href="{% url 'session:search' %}">Find</a></button>
                     <br>
@@ -70,6 +71,9 @@
                         You'll receive an email when our manager finishes your case.</p>
                 {% endif %}
             {% endif %}
+        {% elif request.user.id != object.id %}
+            <button class="primaryAction" type="submit"><a href="{% url 'session:session-initialization' object.id %}">Initialize
+                session</a></button>
         {% endif %}
     {% else %}
         <div style="float: left; width: 100%; ">

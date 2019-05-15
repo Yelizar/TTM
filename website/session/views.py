@@ -45,3 +45,12 @@ class StudentDetailsUpdateView(UpdateView):
 
 def search_view(request):
     return render(request, template_name='website/session/search.html')
+
+
+class SessionInitialization(View):
+    template_name = 'website/session/session_initialization.html'
+
+    def get(self, request, *args, **kwargs):
+        student_obj = CustomUser.objects.get(id=request.user.id)
+        tutor_obj = CustomUser.objects.get(id=kwargs['tutor_pk'])
+        return render(request, self.template_name, locals())

@@ -26,7 +26,8 @@ class ProfileDetailsView(LoginRequiredMixin, View):
 
 class TutorDetailsUpdateView(UpdateView):
     model = TutorDetails
-    fields = ['dob', 'short_resume', 'phone_number', 'cv']
+    fields = ['languages', 'communication_methods',
+         'dob', 'phone_number', 'short_resume', 'cv']
     template_name = 'website/session/update_details.html'
 
     def get_success_url(self):
@@ -35,7 +36,7 @@ class TutorDetailsUpdateView(UpdateView):
 
 class StudentDetailsUpdateView(UpdateView):
     model = StudentDetails
-    fields = ['dob', 'short_resume', 'phone_number', 'cv']
+    fields = ['languages', 'communication_methods']
     template_name = 'website/session/update_details.html'
 
     def get_success_url(self):

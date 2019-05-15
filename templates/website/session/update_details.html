@@ -1,7 +1,7 @@
 {% extends "website/base.html" %}
-{% block titel %} Tutor Details {% endblock %}
+{% block titel %} Update Details {% endblock %}
 {% block content %}
-    <h4> Tutor details update page </h4>
+    <h4> Update details</h4>
     {% if user.is_authenticated %}
     <form class="ui form" method="POST" enctype="multipart/form-data">
         {% csrf_token %}

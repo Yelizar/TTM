@@ -44,7 +44,8 @@ def tutor_directory_path(instance, filename):
 class TutorDetails(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, limit_choices_to={'role': 'Tutor'},
                                 primary_key=True)
-    languages = models.ForeignKey(Languages, on_delete=models.CASCADE, default=None)
+    languages = models.ForeignKey(Languages, on_delete=models.CASCADE,
+                                  default=None, null=True, blank=True)
     communication_methods = models.ForeignKey(CommunicationMethods, on_delete=models.CASCADE,
                                               default=None, null=True, blank=True)
 
@@ -94,7 +95,8 @@ class TutorStatus(models.Model):
 class StudentDetails(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, limit_choices_to={'role': 'Student'},
                                 primary_key=True)
-    languages = models.ForeignKey(Languages, on_delete=models.CASCADE, default=None)
+    languages = models.ForeignKey(Languages, on_delete=models.CASCADE, default=None,
+                                  null=True, blank=True)
     communication_methods = models.ForeignKey(CommunicationMethods, on_delete=models.CASCADE,
                                               default=None, null=True, blank=True)
 

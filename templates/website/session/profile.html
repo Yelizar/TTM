@@ -25,14 +25,26 @@
             <p>Time now: {{ now }}</p>
         </div>
         {% if request.user.id == object.id %}
+            <div>
+            <h5>Balance:</h5>{{ object.sessioncoins.coins }}
+            </div>
             {% if object.role == 'Student' %}
-                <p>Find tutors online</p>
-                <button class="primaryAction" type="submit"><a href="{% url 'session:search' %}">Find</a></button>
-                <br>
+                <div style="float: left;  width: 50%">
+                    <h5>Student details</h5>
+                    <p>Languages: {{ object.studentdetails.languages }}</p>
+                    <p>Communication Methods: {{ object.studentdetails.communication_methods }}</p>
+                    <button class="primaryAction" type="submit"><a
+                            href="{% url 'session:update-student-details' object.studentdetails.user_id %}">Edit</a></button>
+                    <p>Find tutors online</p>
+                    <button class="primaryAction" type="submit"><a href="{% url 'session:search' %}">Find</a></button>
+                    <br>
+                </div>
             {% elif object.role == 'Tutor' %}
 
                 <div style="float: left;  width: 50%">
                     <h5>Tutor details</h5>
+                    <p>Languages: {{ object.tutordetails.languages }}</p>
+                    <p>Communication Methods: {{ object.tutordetails.communication_methods }}</p>
                     <p>DoB: {{ object.tutordetails.dob }}</p>
                     <p>CV: {{ object.tutordetails.cv_name }}</p>
                     <p>Resume: {{ object.tutordetails.short_resume }}</p>

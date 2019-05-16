@@ -1,19 +1,9 @@
 import json
 import logging
 
-from .user import _display_help, _learner_register, _tutor_register, _admin_dump, _admin_load, _admin_display_denping_list, _display_planetpy_feed
+from .register import UserRegister
+from .user import UserController
 
-commands = {
-    '/start': _display_help,
-    '/help': _display_help,
-    '/learner': _learner_register,
-    '/tutor': _tutor_register,
-    '/dump': _admin_dump,
-    '/load': _admin_load,
-    '/pending': _admin_display_denping_list,
-
-    'feed': _display_planetpy_feed,
-}
 
 logger = logging.getLogger('telegram.bot')
 
@@ -30,13 +20,13 @@ class talktome:
 
         payload = json.loads(raw)
 
+        # doto: can we use use user_id instead chat_id?
         chat_id = payload['message']['chat']['id']
-        user_id = payload['message']['user']['id']
-        cmd = payload['message'].get('text')  # command
+        cmd = payload['message'].get('text')
 
-        func = commands.get(cmd.split()[0].lower())
-        if func:
-            return chat_id, func(chat_id)
-        else:
-            return chat_id, 'I do not understand you, mate!'
+
+        UserRegister.register[chat_id] = UserRegister.register.get(chat_id, UserController.newUser(payload['message']['from']))
+
+        return UserController.processCommand(chat_id, cmd)
+
 

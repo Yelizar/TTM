@@ -1,14 +1,15 @@
 {% extends "website/base.html" %}
 {% block titel %} Session initialization {% endblock %}
 {% block content %}
-{#  logic of the process will be rebuild after a discussion #}
+    {#  logic of the process will be rebuild after a discussion #}
     <h5>Session Initialization</h5>
     Session between {{ student_obj.get_full_name }} and {{ tutor_obj.get_full_name }} <br>
     Language type: {% if student_obj.studentdetails.languages == tutor_obj.tutordetails.languages %}
     {{ student_obj.studentdetails.languages }}<br>
-    {% endif %}
-    Language type: {% if student_obj.studentdetails.communication_methods == tutor_obj.tutordetails.communication_methods %}
-    {{ student_obj.studentdetails.communication_methods }}<br>
-    {% endif %}
+{% endif %}
+    <p id="communication_method">Available communication type:</p>
+    {% for method in tutor_obj.tutordetails.communication_methods.all %}
+        <button type="submit" value="{{ method }}" id="id_{{ method }}" class="com_method_ajax">{{ method }}</button>
+    {% endfor %}
 
 {% endblock %}

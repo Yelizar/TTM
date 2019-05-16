@@ -3,16 +3,11 @@
 {% block content %}
     <h4> Profile page </h4>
     {% if user.is_authenticated %}
-        <table>
-            <tr>
-                <th>Last Seen</th>
-                <td>{% if object.last_seen %}{{ object.last_seen|timesince }}{% else %}awhile{% endif %} ago</td>
-            </tr>
-            <tr>
-                <th>Online</th>
-                <td>{{ object.online }}</td>
-            </tr>
-        </table>
+            <h5>
+                {% if object.online %}Online
+                {% else %} Offline | {{ object.last_seen|timesince }} ago{% endif %}
+            </h5>
+
         <div style="float: left; width: 50%; height: 500px">
             <h5>General Profile details</h5>
             <p>Username: {{ object.username }}</p>
@@ -32,7 +27,9 @@
                 <div style="float: left;  width: 50%">
                     <h5>Student details</h5>
                     <p>Languages: {{ object.studentdetails.languages }}</p>
-                    <p>Communication Methods: {{ object.studentdetails.communication_methods }}</p>
+                    <p>Communication Methods: {% for method in object.studentdetails.communication_methods.all %}
+                    | {{ method }} |
+                    {% endfor %}</p>
                     <button class="primaryAction" type="submit"><a
                             href="{% url 'session:update-student-details' object.studentdetails.user_id %}">Edit</a>
                     </button>
@@ -45,7 +42,9 @@
                 <div style="float: left;  width: 50%">
                     <h5>Tutor details</h5>
                     <p>Languages: {{ object.tutordetails.languages }}</p>
-                    <p>Communication Methods: {{ object.tutordetails.communication_methods }}</p>
+                    <p>Communication Methods: {% for method in object.tutordetails.communication_methods.all %}
+                    | {{ method }} |
+                    {% endfor %}</p>
                     <p>DoB: {{ object.tutordetails.dob }}</p>
                     <p>CV: {{ object.tutordetails.cv_name }}</p>
                     <p>Resume: {{ object.tutordetails.short_resume }}</p>
@@ -71,8 +70,8 @@
                         You'll receive an email when our manager finishes your case.</p>
                 {% endif %}
             {% endif %}
-        {% elif request.user.id != object.id %}
-            <button class="primaryAction" type="submit"><a href="{% url 'session:session-initialization' object.id %}">Initialize
+        {% elif request.user.id != object.id  and request.user.role != 'Tutor'%}
+            <button class="primaryAction" type="submit"><a href="{% url 'session:session-initialization'%}">Initialize
                 session</a></button>
         {% endif %}
     {% else %}

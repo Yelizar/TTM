@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, reverse
+from django.http import JsonResponse
 from website.access.models import *
 from django.views.generic import View, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -13,6 +14,8 @@ class ProfileDetailsView(LoginRequiredMixin, View):
 
     def get(self, request, *args, **kwargs):
         object = CustomUser.objects.get(id=kwargs['pk'])
+        if request.user.id != object.id:
+            request.session['tutor_pk'] = object.id
         now = self.now
         return render(request, self.template_name, locals())
 
@@ -52,5 +55,19 @@ class SessionInitialization(View):
 
     def get(self, request, *args, **kwargs):
         student_obj = CustomUser.objects.get(id=request.user.id)
-        tutor_obj = CustomUser.objects.get(id=kwargs['tutor_pk'])
+        tutor_obj = CustomUser.objects.get(id=request.session['tutor_pk'])
+        if request.is_ajax():
+            if request.GET['method']:
+                method = request.GET['method']
+                data = {}
+                try:
+                    if student_obj.studentdetails.communication_methods.get(method__contains=method) == tutor_obj.\
+                            tutordetails.communication_methods.get(method__contains=method):
+                        data['approved_method'] = method
+                        request.session['communication_method'] = method
+
+                except CommunicationMethods.DoesNotExist:
+                    data['error_message'] = 'Tutor don\'t have ' + method
+                return JsonResponse(data)
+
         return render(request, self.template_name, locals())

@@ -145,9 +145,9 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-STATICFILES_DIRS = (
-    os.path.join(BASE_DIR, "static", "dev"),
-)
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static", "dev")
+]
 
 STATIC_ROOT = os.path.join(BASE_DIR, "static", "static_root")
 
@@ -237,5 +237,5 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_AGE = 900
 
 # Check Online Offline user mode
-USER_ONLINE_TIMEOUT = 300
+USER_ONLINE_TIMEOUT = 600
 USER_LASTSEEN_TIMEOUT = 900

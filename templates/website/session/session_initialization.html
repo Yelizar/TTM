@@ -3,13 +3,41 @@
 {% block content %}
     {#  logic of the process will be rebuild after a discussion #}
     <h5>Session Initialization</h5>
-    Session between {{ student_obj.get_full_name }} and {{ tutor_obj.get_full_name }} <br>
-    Language type: {% if student_obj.studentdetails.languages == tutor_obj.tutordetails.languages %}
-    {{ student_obj.studentdetails.languages }}<br>
-{% endif %}
-    <p id="communication_method">Available communication type:</p>
-    {% for method in tutor_obj.tutordetails.communication_methods.all %}
-        <button type="submit" value="{{ method }}" id="id_{{ method }}" class="com_method_ajax">{{ method }}</button>
-    {% endfor %}
+    <form action="" id="session_initialization_form" method="post">
+        {% csrf_token %}
+        <table>
+            <tr>
+                <td><label for="id_student">Student: </label></td>
+                <td><input type="hidden" id="id_student" name="student"
+                           value="{{ student_obj }}">{{ student_obj.get_full_name }}</td>
+            </tr>
+            <tr>
+                <td><label for="id_tutor">Tutor: </label></td>
+                <td><input type="hidden" id="id_tutor" name="tutor"
+                           value="{{ tutor_obj }}">{{ tutor_obj.get_full_name }}</td>
+            </tr>
+            <tr>
+                <td><label for="id_language">Language</label></td>
+                {% if student_obj.studentdetails.languages == tutor_obj.tutordetails.languages %}
+                    <td><input type="hidden" id="id_language" name="language"
+                               value="{{ student_obj.studentdetails.languages }}">{{ student_obj.studentdetails.languages }}
+                    </td>
+                {% endif %}
+            </tr>
+            <tr>
+                <td><label for="id_communication_method">Available Communication Method/s: </label></td>
+                {#FOR TESTING ONLY ONE#}
+                {% for method in student_obj.studentdetails.communication_methods.all %}
+                    <td><input type="radio" id="communication_method_{{ method }}" name="communication_method" class="method"
+                               value="{{ method }}">{{ method }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td></td>
+            </tr>
+        </table>
+    <div class="session_initialization_button"><input type="button" id="session_initialization_button"></div>
+    </form>
+
 
 {% endblock %}

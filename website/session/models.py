@@ -56,12 +56,13 @@ class CommunicationMethods(models.Model):
 
 
 class Session(models.Model):
-    student = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='Student',
-                                   on_delete=models.CASCADE, limit_choices_to={'role': 'Student'})
-    tutor = models.OneToOneField(settings.AUTH_USER_MODEL, related_name="Tutor",
-                                 on_delete=models.CASCADE, limit_choices_to={'role': 'Tutor'})
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='Student',
+                                on_delete=models.CASCADE, limit_choices_to={'role': 'Student'})
+    tutor = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="Tutor",
+                              on_delete=models.CASCADE, limit_choices_to={'role': 'Tutor'})
     session_coin = models.PositiveSmallIntegerField('Coin', help_text="Blocked coin", default=0)
-    communication_method = models.OneToOneField(CommunicationMethods, on_delete=models.CASCADE)
+    language = models.ForeignKey(Languages, on_delete=models.CASCADE)
+    communication_method = models.ForeignKey(CommunicationMethods, on_delete=models.CASCADE)
 
     student_confirm = models.BooleanField(default=False)
     tutor_confirm = models.BooleanField(default=False)

@@ -1,5 +1,5 @@
 $(document).ready(function () {
-    $('.com_method_ajax').click(function () {
+    $('.method').click(function () {
         var method = this.value;
         $.ajax({
             url: "/session-initialization/",
@@ -10,13 +10,23 @@ $(document).ready(function () {
                 if (data.error_message) {
                     //do some stuff
                     alert(data.error_message)
-                }
-                else {
-                    document.getElementById("id_"+data.approved_method).style.color = "blue"
+                } else {
+                    document.getElementById("communication_method_" + data.approved_method).style.color = "blue"
                 }
             }
         })
 
-    })
+    });
+    $('.session_initialization_button').click(function () {
+        var form = $(this).closest("form");
+        $.ajax({
+            url: "/session-initialization/",
+            data: form.serialize(),
+            method: "POST",
+            success: function (meta) {
+                console.log(meta.Session)
+            }
+        })
+    });
 
 });

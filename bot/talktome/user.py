@@ -1,5 +1,5 @@
 import json
-from ..utils import parse_planetpy_rss
+#from ..utils import parse_planetpy_rss
 from django.template.loader import render_to_string
 
 from .register import UserRegister
@@ -18,11 +18,17 @@ class UserRole(object):
 
 class Controller(object):
 
+    def display_help(self, chat_id, cmd):
+        return chat_id, render_to_string(self.hello_message_file)
+
+#    def display_planetpy_feed(self, chat_id, cmd):
+#        return chat_id, render_to_string('talktome/link_list.md', {'items': parse_planetpy_rss()})
+
     def __init__(self, file_name='talktome/hello.md'):
         self.hello_message_file = file_name
         self.command_list = {
-            '/info': display_help,
-            'feed' : distlay_planetry_feed,
+            '/info': Controller.display_help,
+#            'feed' : Controller.display_planetpy_feed,
         }
 
     def processCommand(self, chat_id, cmd):
@@ -35,14 +41,15 @@ class Controller(object):
 
         return chat_id_ret, string_ret
 
-    def display_help(self, chat_id, cmd):
-        return chat_id, render_to_string(self.hello_message_file)
-
-    def display_planetpy_feed(self, chat_id, cmd):
-        return chat_id, render_to_string('talktome/link_list.md', {'items': parse_planetpy_rss()})
-
 
 class AdminController(Controller):
+
+    def restore_register(self, chat_id, cmd):
+        return chat_id, "Saved {} users' items".format(UserRegister.save())
+
+    def dump_register(self, chat_id, cmd):
+        return chat_id, "Loaded {} users' items".format(UserRegister.load())
+
     admin_command_list = {
         '/restore': restore_register,
         '/dump': dump_register,
@@ -51,12 +58,6 @@ class AdminController(Controller):
     def __init__(self):
         super(AdminController, self).__init__('talktome/admin.md')
         self.command_list.update(AdminController.admin_command_list)
-
-    def restore_register(self, chat_id, cmd):
-        return chat_id, "Saved {} users' items".format(UserRegister.save())
-
-    def dump_register(self, chat_id, cmd):
-        return chat_id, "Loaded {} users' items".format(UserRegister.load())
 
 #def _tutor_pending_list():
 #    """Output first 10 tutors from pending list
@@ -83,17 +84,18 @@ class NewbController(Controller):
         super(NewbController, self).__init__('talktome/admin.md')
 
         newb_commands = {
-            '/learner': join_as_learner,
-            '/tutor': join_as_tutor,
+            '/learner': NewbController.join_as_learner,
+            '/tutor': NewbController.join_as_tutor,
         }
         self.command_list.update(newb_commands)
 
     def join_as_learner(self, chat_id, cmd):
-        return __join_as_role(chat_id, UserRole.USER_LEARNER, 'talktome/learner.md')
+        return self.__join_as_role(chat_id, UserRole.USER_LEARNER, 'talktome/learner.md')
 
     def join_as_tutor(self, chat_id, cmd):
-        return __join_as_role(chat_id, UserRole.USER_TUTOR, 'talktome/tutor.md')
+        return self.__join_as_role(chat_id, UserRole.USER_TUTOR, 'talktome/tutor.md')
 
+    @staticmethod
     def __join_as_role(chat_id, role, hello_message_file):
         UserController.update_role(chat_id, role)  
         return chat_id, render_to_string(hello_message_file)
@@ -105,11 +107,11 @@ class LearnerController(Controller):
         super(LearnerController, self).__init__('talktome/learner.md')
 
         learner_commands = {
-            '/submit': submit_session,
-            '/skip': skip_tutor,
-            '/confirm': confirm_tutor,
-            '/approve': approve_session,
-            '/reject': reject_session,
+            '/submit': LearnerController.submit_session,
+            '/skip': LearnerController.skip_tutor,
+            '/confirm': LearnerController.confirm_tutor,
+            '/approve': LearnerController.approve_session,
+            '/reject': LearnerController.reject_session,
         }
         self.command_list.update(learner_commands)
 
@@ -133,12 +135,12 @@ class TutorController(Controller):
 
     def __init__(self):
         tutor_commands = {
-            '/join': join_team,
-            '/online': online_status,
-            '/offline': offline_status,
-            '/confirm': comfirm_ready,
-            '/approve': approve_session,
-            '/reject': reject_session,
+            '/join': TutorController.join_team,
+            '/online': TutorController.online_status,
+            '/offline': TutorController.offline_status,
+            '/confirm': TutorController.comfirm_ready,
+            '/approve': TutorController.approve_session,
+            '/reject': TutorController.reject_session,
         }
 
         super(TutorController, self).__init__('talktome/tutor.md')
@@ -163,10 +165,10 @@ class TutorController(Controller):
         return chat_id, "reject_session"
 
 
-ADMIN_CTRL = AdminControler()
-NEWB_CTRL = NewbControler()
-LEARNER_CTRL = LearnerControler()
-TUTOR_CTRL = TutorControler()
+ADMIN_CTRL = AdminController()
+NEWB_CTRL = NewbController()
+LEARNER_CTRL = LearnerController()
+TUTOR_CTRL = TutorController()
 
 CONTROLLERS = {
     UserRole.USER_ADMIN : ADMIN_CTRL,
@@ -175,12 +177,6 @@ CONTROLLERS = {
     UserRole.USER_TUTOR : TUTOR_CTRL,
 }
 
-    handlers = {
-        UserRole.USER_ADMIN: 'talktome/admin.md',
-        UserRole.USER_NEWB: 'talktome/hello.md',
-        UserRole.USER_LEARNER: 'talktome/learner.md',
-        UserRole.USER_TUTOR: 'talktome/tutor.md',
-    }
 
 class UserController(object):
 

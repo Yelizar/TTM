@@ -24,7 +24,7 @@ $(document).ready(function () {
             data: form.serialize(),
             method: "POST",
             success: function (meta) {
-                console.log(meta.Session)
+                alert(meta.Session)
             }
         })
     });

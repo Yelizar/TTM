@@ -3,10 +3,10 @@
 {% block content %}
     <h4> Profile page </h4>
     {% if user.is_authenticated %}
-            <h5>
-                {% if object.online %}Online
-                {% else %} Offline | {{ object.last_seen|timesince }} ago{% endif %}
-            </h5>
+        <h5>
+            {% if object.online %}Online
+            {% else %} Offline | {{ object.last_seen|timesince }} ago{% endif %}
+        </h5>
 
         <div style="float: left; width: 50%; height: 500px">
             <h5>General Profile details</h5>
@@ -28,22 +28,27 @@
                     <h5>Student details</h5>
                     <p>Languages: {{ object.studentdetails.languages }}</p>
                     <p>Communication Methods: {% for method in object.studentdetails.communication_methods.all %}
-                    | {{ method }} |
+                        | {{ method }} |
                     {% endfor %}</p>
                     <button class="primaryAction" type="submit"><a
                             href="{% url 'session:update-student-details' object.studentdetails.user_id %}">Edit</a>
                     </button>
-                    <p>Find tutors online</p>
-                    <button class="primaryAction" type="submit"><a href="{% url 'session:search' %}">Find</a></button>
-                    <br>
                 </div>
+                {% if request.user.id == object.id %}
+                    <div>
+                    ---------------------------------------------------------------------------------
+                    <h5>Press button to find tutors</h5>
+                    <input id="session-name-input" type="hidden" value="{{ object.username }}"/><br/>
+                    <input id="session-name-submit" type="button" value="Session Initialization"/>
+                    </div>
+                {% endif %}
             {% elif object.role == 'Tutor' %}
 
                 <div style="float: left;  width: 50%">
                     <h5>Tutor details</h5>
                     <p>Languages: {{ object.tutordetails.languages }}</p>
                     <p>Communication Methods: {% for method in object.tutordetails.communication_methods.all %}
-                    | {{ method }} |
+                        | {{ method }} |
                     {% endfor %}</p>
                     <p>DoB: {{ object.tutordetails.dob }}</p>
                     <p>CV: {{ object.tutordetails.cv_name }}</p>
@@ -70,9 +75,6 @@
                         You'll receive an email when our manager finishes your case.</p>
                 {% endif %}
             {% endif %}
-        {% elif request.user.id != object.id  and request.user.role != 'Tutor'%}
-            <button class="primaryAction" type="submit"><a href="{% url 'session:session-initialization'%}">Initialize
-                session</a></button>
         {% endif %}
     {% else %}
         <div style="float: left; width: 100%; ">
@@ -91,6 +93,12 @@
         <button class="primaryAction" type="submit"><a href="{% url 'access:home' %}"> Home </a></button>
         <button class="primaryAction" type="submit"><a href="{% url 'access:logout' %}"> Logout </a></button>
     </div>
+    <script>
+        document.querySelector('#session-name-submit').onclick = function (e) {
+            var sessionName = document.querySelector('#session-name-input').value;
+            window.location.pathname = 'session-initialization/' + sessionName + '/';
+        };
+    </script>
 
 
 {% endblock %}

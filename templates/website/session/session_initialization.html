@@ -3,41 +3,60 @@
 {% block content %}
     {#  logic of the process will be rebuild after a discussion #}
     <h5>Session Initialization</h5>
-    <form action="" id="session_initialization_form" method="post">
-        {% csrf_token %}
-        <table>
-            <tr>
-                <td><label for="id_student">Student: </label></td>
-                <td><input type="hidden" id="id_student" name="student"
-                           value="{{ student_obj }}">{{ student_obj.get_full_name }}</td>
-            </tr>
-            <tr>
-                <td><label for="id_tutor">Tutor: </label></td>
-                <td><input type="hidden" id="id_tutor" name="tutor"
-                           value="{{ tutor_obj }}">{{ tutor_obj.get_full_name }}</td>
-            </tr>
-            <tr>
-                <td><label for="id_language">Language</label></td>
-                {% if student_obj.studentdetails.languages == tutor_obj.tutordetails.languages %}
-                    <td><input type="hidden" id="id_language" name="language"
-                               value="{{ student_obj.studentdetails.languages }}">{{ student_obj.studentdetails.languages }}
-                    </td>
-                {% endif %}
-            </tr>
-            <tr>
-                <td><label for="id_communication_method">Available Communication Method/s: </label></td>
-                {#FOR TESTING ONLY ONE#}
-                {% for method in student_obj.studentdetails.communication_methods.all %}
-                    <td><input type="radio" id="communication_method_{{ method }}" name="communication_method" class="method"
-                               value="{{ method }}">{{ method }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td></td>
-            </tr>
-        </table>
-    <div class="session_initialization_button"><input type="button" id="session_initialization_button"></div>
-    </form>
+    <table>
+        <tr>
+            <td><label for="id_tutor">Tutor:</label></td>
+            <td><label id="id_tutor"></label></td>
+        </tr>
+        <tr>
+            <td><label for="id_student">Student: </label></td>
+            <td><label id="id_student"></label></td>
+            <td><input type="button" value="REDIRECT" id="confirm_student"></td>
+        </tr>
+    </table>
+        <script>
+        var sessionName = {{ session_name_json }};
+        var sessionSocket = new WebSocket(
+            'ws://' + window.location.host +
+            '/ws/session-initialization/' + sessionName + '/');
+
+        sessionSocket.onmessage = function (e) {
+            var tutor_obj = document.querySelector('#id_tutor').textContent;
+            if (tutor_obj) {
+                document.querySelector('#id_tutor').innerHTML = tutor_obj;
+            }
+            var data = JSON.parse(e.data);
+            if (data['user']) {
+                var user = data['user'];
+                if (user.role === 'Tutor') {
+                    document.querySelector('#id_tutor').innerHTML = user.first_name + ' ' + user.last_name;
+                }
+                if (user.role === 'Student') {
+                    console.log(user.role);
+                    document.querySelector('#id_student').innerHTML = user.first_name + ' ' + user.last_name;
+                    sessionSocket.send(JSON.stringify({
+                        'student': user.username
+                    }));
+                }
+            }
+            if (data['student']) {
+                window.location.href = 'http://127.0.0.1:8000/profile/3'
+                document.querySelector('#id_student').innerHTML = data['student'];
+            }
+        };
+
+        sessionSocket.onclose = function (e) {
+            document.querySelector('#id_student').innerHTML = '';
+            console.error('Chat socket closed unexpectedly');
+        };
+
+
+        $('#confirm_student').click(function () {
+            window.location.href = 'http://127.0.0.1:8000/profile/3'
+
+        });
+
+    </script>
 
 
 {% endblock %}

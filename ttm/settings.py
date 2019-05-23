@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     # user's apps
     'bot',
     'api',
@@ -239,3 +240,14 @@ SESSION_COOKIE_AGE = 900
 # Check Online Offline user mode
 USER_ONLINE_TIMEOUT = 600
 USER_LASTSEEN_TIMEOUT = 900
+
+ASGI_APPLICATION = 'ttm.routing.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}

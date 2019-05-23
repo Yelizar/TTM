@@ -4,6 +4,11 @@ from website.access.models import *
 from django.views.generic import View, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
+from . import models
+from django.core.cache import cache
+from django.utils.safestring import mark_safe
+import json
+
 
 class ProfileDetailsView(LoginRequiredMixin, View):
     template_name = 'website/session/profile.html'
@@ -45,39 +50,12 @@ class StudentDetailsUpdateView(UpdateView):
         return reverse('session:profile', kwargs={'pk': self.object.user_id})
 
 
-def search_view(request):
-    return render(request, template_name='website/session/search.html')
-
-
 class SessionInitialization(View):
     template_name = 'website/session/session_initialization.html'
 
     def get(self, request, *args, **kwargs):
         student_obj = CustomUser.objects.get(id=request.user.id)
-        tutor_obj = CustomUser.objects.get(id=request.session['tutor_pk'])
-        if request.is_ajax():
-            if request.GET['method']:
-                method = request.GET['method']
-                data = {}
-                try:
-                    if student_obj.studentdetails.communication_methods.get(method__contains=method) == tutor_obj.\
-                            tutordetails.communication_methods.get(method__contains=method):
-                        data['approved_method'] = method
-                        request.session['communication_method'] = method
-                except CommunicationMethods.DoesNotExist:
-                    data['error_message'] = 'Tutor don\'t have ' + method
-                return JsonResponse(data)
-        return render(request, self.template_name, locals())
 
-    def post(self, request, *args, **kwargs):
-        if request.is_ajax():
-            session = Session()
-            session.student = CustomUser.objects.get(username=request.POST.get('student'))
-            session.tutor = CustomUser.objects.get(username=request.POST.get('tutor'))
-            session.language = Languages.objects.get(language=request.POST.get('language'))
-            session.communication_method = CommunicationMethods.objects.get(method=request.POST.get('communication_method'))
-            session.save()
-            meta = {"Session": "Session"}
-            return JsonResponse(meta)
+        session_name_json = mark_safe(json.dumps(kwargs['session_name']))
         return render(request, self.template_name, locals())
 

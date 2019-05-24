@@ -33,8 +33,15 @@ class SessionAdmin(admin.ModelAdmin):
     search_fields = ['student', 'tutor']
     fields = ['student', 'tutor', 'communication_method', 'student_confirm', 'tutor_confirm', 'is_going']
 
+class ChannelRoomAdmin(admin.ModelAdmin):
+    list_display = ['id', 'student', 'is_active']
+    list_display_links = ['student']
+
+    search_fields = ['student']
+    fields = ['student', 'tutor']
 
 admin.site.register(Languages, LanguagesAdmin)
 admin.site.register(CommunicationMethods, CommunicationMethodsAdmin)
 admin.site.register(SessionCoins, SessionCoinsAdmin)
 admin.site.register(Session, SessionAdmin)
+admin.site.register(ChannelRoom, ChannelRoomAdmin)

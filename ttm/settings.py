@@ -42,7 +42,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'channels',
     # user's apps
     'bot',
     'api',
@@ -53,7 +52,9 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'rest_auth',
     # oauth
-    'social_django'
+    'social_django',
+    'channels',
+
 ]
 
 MIDDLEWARE = [

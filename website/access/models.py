@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.core.cache import cache
-from website.session.models import *
+from website.session.models import CommunicationMethods, Languages
 import datetime
 from ttm import settings
 import os

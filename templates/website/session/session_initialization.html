@@ -3,58 +3,62 @@
 {% block content %}
     {#  logic of the process will be rebuild after a discussion #}
     <h5>Session Initialization</h5>
-    <table>
-        <tr>
-            <td><label for="id_tutor">Tutor:</label></td>
-            <td><label id="id_tutor"></label></td>
-        </tr>
-        <tr>
-            <td><label for="id_student">Student: </label></td>
-            <td><label id="id_student"></label></td>
-            <td><input type="button" value="REDIRECT" id="confirm_student"></td>
-        </tr>
+    <label id="id_student">Student: </label>
+
+    <table id="tutor_list">
     </table>
-        <script>
+    <input type="button" value="REDIRECT" id="confirm_student">
+    <script>
         var sessionName = {{ session_name_json }};
+        var wsProtocol = 'ws://';
+        if (window.location.protocol === 'https:'){
+            wsProtocol = 'wss://'
+        }
         var sessionSocket = new WebSocket(
-            'ws://' + window.location.host +
+            wsProtocol + window.location.host +
             '/ws/session-initialization/' + sessionName + '/');
 
+        sessionSocket.onopen = function(e){
+            console.log(e)
+        };
+
         sessionSocket.onmessage = function (e) {
-            var tutor_obj = document.querySelector('#id_tutor').textContent;
-            if (tutor_obj) {
-                document.querySelector('#id_tutor').innerHTML = tutor_obj;
-            }
+            console.log(sessionSocket);
             var data = JSON.parse(e.data);
-            if (data['user']) {
-                var user = data['user'];
-                if (user.role === 'Tutor') {
-                    document.querySelector('#id_tutor').innerHTML = user.first_name + ' ' + user.last_name;
-                }
-                if (user.role === 'Student') {
-                    console.log(user.role);
-                    document.querySelector('#id_student').innerHTML = user.first_name + ' ' + user.last_name;
-                    sessionSocket.send(JSON.stringify({
-                        'student': user.username
-                    }));
-                }
-            }
             if (data['student']) {
-                window.location.href = 'http://127.0.0.1:8000/profile/3'
-                document.querySelector('#id_student').innerHTML = data['student'];
+                var student = data['student'];
+                    document.querySelector('#id_student').innerHTML += " " + student.first_name + ' ' + student.last_name;
+
+            }
+            if (data['tutor']) {
+                var user = data['tutor'];
+                var td = document.createElement('td');
+                var tr = document.createElement('tr');
+                var lable = document.createElement('label');
+                td.setAttribute('id', 'id_tutor_' + user.id);
+                lable.innerHTML = "Tutor: " + user.first_name + ' ' + user.last_name;
+                td.appendChild(lable);
+                tr.appendChild(td);
+                document.querySelector('#tutor_list').appendChild(tr);
+
+
+
             }
         };
 
+        sessionSocket.onerror = function(e){
+            console.log(e)
+        };
+
         sessionSocket.onclose = function (e) {
-            document.querySelector('#id_student').innerHTML = '';
             console.error('Chat socket closed unexpectedly');
         };
 
 
-        $('#confirm_student').click(function () {
-            window.location.href = 'http://127.0.0.1:8000/profile/3'
+        {#$('#confirm_student').click(function () {#}
+        {#    window.location.href = 'http://127.0.0.1:8000/profile/3'#}
 
-        });
+        {#\});#}
 
     </script>
 

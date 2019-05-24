@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from .managers import ChannelRoomManager
 
 
 class Languages(models.Model):
@@ -78,7 +79,25 @@ class Session(models.Model):
         return '{}-{}'.format(self.student, self.tutor)
 
 
+class ChannelRoom(models.Model):
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='RoomHolder',
+                                on_delete=models.CASCADE, limit_choices_to={'role': 'Student'})
 
+    tutor = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="Visitor", limit_choices_to={'role': 'Tutor'},
+                                   default=None, blank=True)
+
+    is_active = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now=False, auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True, auto_now_add=False)
+
+    objects = ChannelRoomManager()
+
+    class Meta:
+        verbose_name = 'Channel'
+        verbose_name_plural = 'Channels'
+
+    def __str__(self):
+        return 'Channel-{}'.format(self.student)
 
 
 

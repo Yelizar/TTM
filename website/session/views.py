@@ -54,8 +54,6 @@ class SessionInitialization(View):
     template_name = 'website/session/session_initialization.html'
 
     def get(self, request, *args, **kwargs):
-        student_obj = CustomUser.objects.get(id=request.user.id)
-
         session_name_json = mark_safe(json.dumps(kwargs['session_name']))
         return render(request, self.template_name, locals())
 

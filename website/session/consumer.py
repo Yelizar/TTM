@@ -3,17 +3,15 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from api.serializers import UserSerializer
 from channels.db import database_sync_to_async
 import json
-from django.conf import settings
-from .models import *
+from .models import ChannelRoom
 
 
 class SessionConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.session_name = self.scope['url_route']['kwargs']['session_name']
         self.room_group_name = 'session_%s' % self.session_name
-        channelRoom = await self.get_channel_room()
-        print(channelRoom)
-
+        self.user = self.scope['user']
+        self.channelRoom = await self.get_channel_room()
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
@@ -26,16 +24,20 @@ class SessionConsumer(AsyncWebsocketConsumer):
                 'student': user.data
             }))
         elif user.data['role'] == 'Tutor':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'add_user',
-                    'user': user.data
-                }
-            )
+            if await self.add_to_channel_room():
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'add_user',
+                        'user': user.data
+                    }
+                )
+            else:
+                await self.disconnect(483)
 
     async def disconnect(self, close_code):
         # Leave session
+        await self.remove_from_channel_room()
         await  self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
@@ -65,5 +67,14 @@ class SessionConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_channel_room(self):
         return ChannelRoom.objects.get_or_new(self.session_name)[0]
+
+    @database_sync_to_async
+    def add_to_channel_room(self):
+        return ChannelRoom.objects.add_visitor(self.user.username, self.channelRoom)
+
+    @database_sync_to_async
+    def remove_from_channel_room(self):
+        return ChannelRoom.objects.remove_visitor(self.user.username, self.channelRoom)
+
 
 

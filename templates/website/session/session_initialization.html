@@ -3,7 +3,46 @@
 {% block content %}
     {#  logic of the process will be rebuild after a discussion #}
     <h5>Session Initialization</h5>
-    <label id="id_student">Student: </label>
+    <div id="student_details" style="float: left; width: 50%; height: 500px">
+        <table>
+            <tr>
+                <td>
+                    <label id="id_student_name">Student: {{ object.get_full_name }}</label>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label id="id_student_language">Language: {{ object.studentdetails.languages }}</label>
+                </td>
+            </tr>
+            <tr>
+                <td><label id="id_student_method">Method: </label></td>
+                {% for method in object.studentdetails.communication_methods.all %}
+                    <td><input type="radio" id="communication_method_{{ method }}" name="communication_method"
+                               class="method"
+                               value="{{ method }}">{{ method }}</td>
+                {% endfor %}
+            </tr>
+        </table>
+    </div>
+    <div id="tutor_details" style="float: left; width: 50%; height: 500px">
+        <table>
+            {% if list_tutors %}
+                {% for tutor in list_tutors.tutor.all %}
+                    {% if tutor != request.user %}
+                        <tr>
+                            <td>
+                                <label id="id_student_language">Tutor: {{ tutor.get_full_name }}</label>
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+
+            {% endif %}
+
+        </table>
+    </div>
+
 
     <table id="tutor_list">
     </table>
@@ -11,47 +50,42 @@
     <script>
         var sessionName = {{ session_name_json }};
         var wsProtocol = 'ws://';
-        if (window.location.protocol === 'https:'){
+        if (window.location.protocol === 'https:') {
             wsProtocol = 'wss://'
         }
         var sessionSocket = new WebSocket(
             wsProtocol + window.location.host +
             '/ws/session-initialization/' + sessionName + '/');
 
-        sessionSocket.onopen = function(e){
-            console.log(e)
+        sessionSocket.onopen = function (e) {
+            console.log(e.data)
         };
 
         sessionSocket.onmessage = function (e) {
             console.log(sessionSocket);
             var data = JSON.parse(e.data);
-            if (data['student']) {
-                var student = data['student'];
-                    document.querySelector('#id_student').innerHTML += " " + student.first_name + ' ' + student.last_name;
-
-            }
-            if (data['tutor']) {
-                var user = data['tutor'];
+            if (data['add_user']) {
+                var addedUser = data['add_user'];
                 var td = document.createElement('td');
                 var tr = document.createElement('tr');
                 var lable = document.createElement('label');
-                td.setAttribute('id', 'id_tutor_' + user.id);
-                lable.innerHTML = "Tutor: " + user.first_name + ' ' + user.last_name;
+                td.setAttribute('id', 'id_tutor_' + addedUser.id);
+                lable.innerHTML = "Tutor: " + addedUser.first_name + ' ' + addedUser.last_name;
                 td.appendChild(lable);
                 tr.appendChild(td);
-                document.querySelector('#tutor_list').appendChild(tr);
-
-
-
+                document.querySelector('#tutor_details').appendChild(tr);
+            } else if (data['remove_user']) {
+                var removedUser = data['remove_user'];
+                $('#id_tutor_' + removedUser.id).remove()
             }
         };
 
-        sessionSocket.onerror = function(e){
+        sessionSocket.onerror = function (e) {
             console.log(e)
         };
 
         sessionSocket.onclose = function (e) {
-            console.error('Chat socket closed unexpectedly');
+            console.error('Chat socket closed unexpectedly', e);
         };
 
 

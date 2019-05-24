@@ -1,10 +1,10 @@
-from django.shortcuts import render, redirect, reverse
+from django.shortcuts import render, redirect, reverse, get_object_or_404
 from django.http import JsonResponse
 from website.access.models import *
 from django.views.generic import View, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
-from . import models
+from .models import ChannelRoom
 from django.core.cache import cache
 from django.utils.safestring import mark_safe
 import json
@@ -54,6 +54,12 @@ class SessionInitialization(View):
     template_name = 'website/session/session_initialization.html'
 
     def get(self, request, *args, **kwargs):
+        object = CustomUser.objects.get(username=kwargs['session_name'])
+        if object != request.user:
+            list_tutors = ChannelRoom.objects.get(student_id=object.id, is_active=True)
+            print(list_tutors.tutor.all())
+            for tutor in list_tutors.tutor.all():
+                print(tutor)
         session_name_json = mark_safe(json.dumps(kwargs['session_name']))
         return render(request, self.template_name, locals())
 

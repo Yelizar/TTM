@@ -10,26 +10,20 @@ class SessionConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.session_name = self.scope['url_route']['kwargs']['session_name']
         self.room_group_name = 'session_%s' % self.session_name
-        self.user = self.scope['user']
+        self.user = UserSerializer(self.scope['user'])
         self.channelRoom = await self.get_channel_room()
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
         )
         await self.accept()
-
-        user = UserSerializer(self.scope['user'])
-        if user.data['role'] == 'Student':
-            await self.send(text_data=json.dumps({
-                'student': user.data
-            }))
-        elif user.data['role'] == 'Tutor':
+        if self.user.data['role'] == 'Tutor':
             if await self.add_to_channel_room():
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
                         'type': 'add_user',
-                        'user': user.data
+                        'user': self.user.data
                     }
                 )
             else:
@@ -38,6 +32,13 @@ class SessionConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         # Leave session
         await self.remove_from_channel_room()
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'remove_user',
+                'user': self.user.data
+            }
+        )
         await  self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
@@ -46,10 +47,8 @@ class SessionConsumer(AsyncWebsocketConsumer):
     # Receive message from WebSocket
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
-
         if 'new_user' in text_data_json.keys():
             user = UserSerializer(self.scope['user'])
-            print(user.data)
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -61,7 +60,13 @@ class SessionConsumer(AsyncWebsocketConsumer):
     async def add_user(self, event):
         user = event['user']
         await self.send(text_data=json.dumps({
-            'tutor': user
+            'add_user': user
+        }))
+
+    async def remove_user(self, event):
+        user = event['user']
+        await self.send(text_data=json.dumps({
+            'remove_user': user
         }))
 
     @database_sync_to_async
@@ -70,11 +75,11 @@ class SessionConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def add_to_channel_room(self):
-        return ChannelRoom.objects.add_visitor(self.user.username, self.channelRoom)
+        return ChannelRoom.objects.add_visitor(self.user.data['username'], self.channelRoom)
 
     @database_sync_to_async
     def remove_from_channel_room(self):
-        return ChannelRoom.objects.remove_visitor(self.user.username, self.channelRoom)
+        return ChannelRoom.objects.remove_visitor(self.user.data['username'], self.channelRoom)
 
 
 

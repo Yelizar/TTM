@@ -10,5 +10,6 @@ urlpatterns = [
     path('profile/update-t-details/<int:pk>', views.TutorDetailsUpdateView.as_view(), name='update-tutor-details'),
     path('profile/update-s-details/<int:pk>', views.StudentDetailsUpdateView.as_view(), name='update-student-details'),
     path('session-initialization/<session_name>/', views.SessionInitialization.as_view(), name='session-initialization'),
+    path('session/', views.session, name='session'),
 
 ]

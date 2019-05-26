@@ -57,9 +57,10 @@ class SessionInitialization(View):
         object = CustomUser.objects.get(username=kwargs['session_name'])
         if object != request.user:
             list_tutors = ChannelRoom.objects.get(student_id=object.id, is_active=True)
-            print(list_tutors.tutor.all())
-            for tutor in list_tutors.tutor.all():
-                print(tutor)
         session_name_json = mark_safe(json.dumps(kwargs['session_name']))
         return render(request, self.template_name, locals())
+
+
+def session(request):
+    return render(request, 'website/session/SESSION(TEMP).html')
 

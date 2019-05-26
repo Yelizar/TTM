@@ -37,3 +37,9 @@ class ChannelRoomManager(models.Manager):
                 return True
 
         return False
+
+    def close(self, room):
+        obj = self.get(id=room.id)
+        obj.is_active = False
+        obj.save()
+        return True

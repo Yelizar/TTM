@@ -37,9 +37,7 @@
                         </tr>
                     {% endif %}
                 {% endfor %}
-
             {% endif %}
-
         </table>
     </div>
 
@@ -48,6 +46,7 @@
     </table>
     <input type="button" value="REDIRECT" id="confirm_student">
     <script>
+
         var sessionName = {{ session_name_json }};
         var wsProtocol = 'ws://';
         if (window.location.protocol === 'https:') {
@@ -69,14 +68,24 @@
                 var td = document.createElement('td');
                 var tr = document.createElement('tr');
                 var lable = document.createElement('label');
-                td.setAttribute('id', 'id_tutor_' + addedUser.id);
+                var button = document.createElement('input');
+                tr.setAttribute('id', addedUser.username);
+                tr.setAttribute('class', 'tr_tutor_obj');
+                button.setAttribute('value', 'Choose tutor');
+                button.setAttribute('type', 'button');
+                button.setAttribute('id', 'choice');
                 lable.innerHTML = "Tutor: " + addedUser.first_name + ' ' + addedUser.last_name;
                 td.appendChild(lable);
+                td.appendChild(button);
                 tr.appendChild(td);
                 document.querySelector('#tutor_details').appendChild(tr);
             } else if (data['remove_user']) {
+
                 var removedUser = data['remove_user'];
-                $('#id_tutor_' + removedUser.id).remove()
+                $('#'+removedUser['username']).remove()
+            }
+            else if (data['start_session']){
+                window.location.href = 'http://127.0.0.1:8000/session/'
             }
         };
 
@@ -88,12 +97,12 @@
             console.error('Chat socket closed unexpectedly', e);
         };
 
-
-        {#$('#confirm_student').click(function () {#}
-        {#    window.location.href = 'http://127.0.0.1:8000/profile/3'#}
-
-        {#\});#}
-
+    $(document).on('click', '#choice', function () {
+        var chosenTutor = $(this).parents('tr').attr('id');
+        sessionSocket.send(JSON.stringify({
+            'chosenTutor': chosenTutor
+        }));
+    })
     </script>
 
 

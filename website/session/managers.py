@@ -3,6 +3,9 @@ from django.db import models
 
 
 class ChannelRoomManager(models.Manager):
+    """
+    Managers methods for consumer.
+    """
 
     def get_or_new(self, username):
         user = get_user_model().objects.get(username=username)
@@ -40,6 +43,29 @@ class ChannelRoomManager(models.Manager):
 
     def close(self, room):
         obj = self.get(id=room.id)
-        obj.is_active = False
-        obj.save()
-        return True
+        if obj:
+            obj.is_active = False
+            obj.save()
+            return True
+        return False
+
+
+class ChannelNamesManager(models.Manager):
+    """
+    Managers methods for consumer.
+    """
+
+    def get_one(self, channel_id):
+        obj = self.filter(channel_id=channel_id, is_active=True)
+        if obj:
+            return obj.first(), False
+        return False
+
+    def disable(self, channel_id):
+        obj = self.filter(channel_id=channel_id, is_active=True)
+        if obj:
+            for o in obj:
+                o.is_active = False
+                o.save()
+                return True
+        return False

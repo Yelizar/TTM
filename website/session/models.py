@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from .managers import ChannelRoomManager
+from .managers import ChannelRoomManager, ChannelNamesManager
 
 
 class Languages(models.Model):
@@ -98,6 +98,21 @@ class ChannelRoom(models.Model):
 
     def __str__(self):
         return 'Channel-{}'.format(self.student)
+
+
+class ChannelNames(models.Model):
+    channel = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    channel_name = models.CharField('Channel Name', max_length=36)
+    is_active = models.BooleanField(default=True)
+
+    objects = ChannelNamesManager()
+
+    class Meta:
+        verbose_name = 'Channel Name'
+        verbose_name_plural = 'Channels Names'
+
+    def __str__(self):
+        return '{}'.format(self.channel)
 
 
 

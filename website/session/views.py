@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect, reverse, get_object_or_404
+from django.shortcuts import render, redirect, reverse
 from django.http import JsonResponse
 from website.access.models import *
 from django.views.generic import View, UpdateView
@@ -34,7 +34,7 @@ class ProfileDetailsView(LoginRequiredMixin, View):
 class TutorDetailsUpdateView(UpdateView):
     model = TutorDetails
     fields = ['languages', 'communication_methods',
-         'dob', 'phone_number', 'short_resume', 'cv']
+              'dob', 'phone_number', 'short_resume', 'cv']
     template_name = 'website/session/update_details.html'
 
     def get_success_url(self):
@@ -63,4 +63,3 @@ class SessionInitialization(View):
 
 def session(request):
     return render(request, 'website/session/SESSION(TEMP).html')
-

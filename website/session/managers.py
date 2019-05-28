@@ -42,11 +42,11 @@ class ChannelRoomManager(models.Manager):
         return False
 
     def close(self, room):
-        obj = self.get(id=room.id)
+        obj = self.filter(id=room.id, is_active=True)
         if obj:
-            obj.is_active = False
-            obj.save()
-            return True
+            for o in obj:
+                o.delete()
+                return True
         return False
 
 
@@ -65,7 +65,6 @@ class ChannelNamesManager(models.Manager):
         obj = self.filter(channel_id=channel_id, is_active=True)
         if obj:
             for o in obj:
-                o.is_active = False
-                o.save()
+                o.delete()
                 return True
         return False

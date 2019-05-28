@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.core.cache import cache
 from website.session.models import CommunicationMethods, Languages
+from .managers import CustomUserManager
 import datetime
 from ttm import settings
 import os
@@ -13,6 +14,8 @@ class CustomUser(AbstractUser):
             ('Tutor', 'Tutor'))
     role = models.CharField(max_length=8, choices=ROLE, help_text='Role can\'t be changed after', null=True, blank=True)
     is_online = models.BooleanField(default=False)
+
+    objects = CustomUserManager()
 
     def last_seen(self):
         return cache.get('seen_%s' % self.username)

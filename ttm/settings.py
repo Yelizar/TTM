@@ -53,7 +53,9 @@ INSTALLED_APPS = [
     'rest_auth',
     # oauth
     'social_django',
+    # real-time
     'channels',
+    'notifications'
 
 ]
 

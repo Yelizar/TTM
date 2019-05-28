@@ -7,10 +7,15 @@ from .models import ChannelRoom, ChannelNames
 
 
 class SessionConsumer(AsyncWebsocketConsumer):
+
     async def connect(self):
+        # noinspection PyAttributeOutsideInit
         self.session_name = self.scope['url_route']['kwargs']['session_name']
+        # noinspection PyAttributeOutsideInit
         self.room_group_name = 'session_%s' % self.session_name
+        # noinspection PyAttributeOutsideInit
         self.user = await self.get_serialized_user()
+        # noinspection PyAttributeOutsideInit
         self.channelRoom = await self.get_channel_room()
         await self.set_channel_name()
         await self.channel_layer.group_add(
@@ -31,17 +36,20 @@ class SessionConsumer(AsyncWebsocketConsumer):
         if channel_name is None:
             channel_name = self.channel_name
         # Leave session
-        await self.remove_from_channel_room()
-        await self.disable_channel_name(remove_user.data['id'])
+        await self.remove_from_channel_room(username=remove_user.data['username'])
         await self.send_message('remove_user',
                                 remove_user.data)
-        # change self.channel_name when remove a user
         await  self.channel_layer.group_discard(
             self.room_group_name,
             channel_name
         )
+        if not self.channelRoom.tutor.exists():
+            await self.close_room()
+
+        await self.disable_channel_name(remove_user.data['id'])
 
     # Receive message from WebSocket
+    # noinspection PyMethodOverriding
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         if 'chosenTutor' in text_data_json.keys():
@@ -52,10 +60,8 @@ class SessionConsumer(AsyncWebsocketConsumer):
                     channel_obj = await self.get_channel_name(remove_user.data['id'])
                     await self.disconnect(close_code=400, remove_user=remove_user,
                                           channel_name=channel_obj.channel_name)
-            #         add self.channel_name to each user in ChannelRoom DB
             await self.send_message('start_session',
                                     user.data)
-            await self.close_room()
 
     async def start_session(self, event):
         user = event['message']
@@ -104,13 +110,13 @@ class SessionConsumer(AsyncWebsocketConsumer):
         return ChannelRoom.objects.add_visitor(self.user.data['username'], self.channelRoom)
 
     @database_sync_to_async
-    def remove_from_channel_room(self):
+    def remove_from_channel_room(self, username):
         """Remove User from Room Object"""
-        return ChannelRoom.objects.remove_visitor(self.user.data['username'], self.channelRoom)
+        return ChannelRoom.objects.remove_visitor(username=username, room=self.channelRoom)
 
     @database_sync_to_async
     def close_room(self):
-        """Change status ChannelRoom Object.is_active = False"""
+        """Delete ChannelRoom Object.delete()"""
         return ChannelRoom.objects.close(self.channelRoom)
 
     @database_sync_to_async
@@ -125,5 +131,5 @@ class SessionConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def disable_channel_name(self, channel_id):
-        """Change status ChannelNames Object.is_active = False"""
+        """Delete ChannelNames Object.delete()"""
         return ChannelNames.objects.disable(channel_id=channel_id)

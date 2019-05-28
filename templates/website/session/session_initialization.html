@@ -85,7 +85,8 @@
                 $('#'+removedUser['username']).remove()
             }
             else if (data['start_session']){
-                window.location.href = 'http://127.0.0.1:8000/session/'
+                window.location.href = 'http://127.0.0.1:8000/session/';
+                sessionSocket.close()
             }
         };
 
@@ -103,6 +104,16 @@
             'chosenTutor': chosenTutor
         }));
     })
+    if (!sessionSocket){
+        console.log('here')
+        function redirect() {
+    setTimeout(function () {
+        window.location.href = 'http://127.0.0.1:8000';
+    }, 10000);
+}
+
+    }
+
     </script>
 
 

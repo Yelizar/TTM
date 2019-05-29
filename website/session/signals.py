@@ -9,5 +9,8 @@ def session_initialized(sender, instance, created, using, **kwargs):
     """
     Send notification to a list of tutors who is searching a session
     """
-    tutor_list = CustomUser.objects.tutor_list()
-    notify.send(sender=instance.student, recipient=tutor_list, verb='New session', description='URL',)
+    if created:
+        tutor_list = CustomUser.objects.tutor_list()
+        url = instance.get_absolute_url()
+        verb = '<a href="{}">Room</a>'.format(url)
+        notify.send(sender=instance.student, recipient=tutor_list, verb='New session\n' + verb, description='URL',)

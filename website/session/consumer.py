@@ -43,10 +43,10 @@ class SessionConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             channel_name
         )
+        await self.disable_channel_name(remove_user.data['id'])
         if not self.channelRoom.tutor.exists():
             await self.close_room()
-
-        await self.disable_channel_name(remove_user.data['id'])
+            await self.close()
 
     # Receive message from WebSocket
     # noinspection PyMethodOverriding

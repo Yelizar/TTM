@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from .managers import ChannelRoomManager, ChannelNamesManager
+from django.urls import reverse
 
 
 class Languages(models.Model):
@@ -99,9 +100,12 @@ class ChannelRoom(models.Model):
     def __str__(self):
         return 'Channel-{}'.format(self.student)
 
+    def get_absolute_url(self):
+        return reverse('session:session-initialization', kwargs={'session_name': self.student})
+
 
 class ChannelNames(models.Model):
-    channel = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    channel = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     channel_name = models.CharField('Channel Name', max_length=36)
     is_active = models.BooleanField(default=True)
 

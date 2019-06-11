@@ -49,7 +49,6 @@ class TutorDetails(models.Model):
                                 primary_key=True)
     languages = models.ForeignKey(Languages, on_delete=models.CASCADE,
                                   default=None, null=True, blank=True)
-    communication_methods = models.ManyToManyField(CommunicationMethods, default=None, blank=True)
 
     phone_regex = RegexValidator(regex=r'^\+?1?\d{9,15}$',
                                  message="Phone number must be entered in the format:"
@@ -99,7 +98,6 @@ class StudentDetails(models.Model):
                                 primary_key=True)
     languages = models.ForeignKey(Languages, on_delete=models.CASCADE, default=None,
                                   null=True, blank=True)
-    communication_methods = models.ManyToManyField(CommunicationMethods, default=None, blank=True)
 
     is_active = models.BooleanField('Approved', default=True)
     created = models.DateTimeField(auto_now=False, auto_now_add=True)

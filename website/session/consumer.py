@@ -3,7 +3,7 @@ from api.serializers import UserSerializer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 import json
-from .models import ChannelRoom, ChannelNames
+from .models import ChannelRoom, ChannelNames, CommunicationMethodNumber
 
 
 class SessionConsumer(AsyncWebsocketConsumer):
@@ -60,13 +60,14 @@ class SessionConsumer(AsyncWebsocketConsumer):
                     channel_obj = await self.get_channel_name(remove_user.data['id'])
                     await self.disconnect(close_code=400, remove_user=remove_user,
                                           channel_name=channel_obj.channel_name)
+            tutor_number = await self.get_tutor_number(tutor_id=user.data['id'])
             await self.send_message('start_session',
-                                    user.data)
+                                    tutor_number)
 
     async def start_session(self, event):
-        user = event['message']
+        tutor_number = event['message']
         await self.send(text_data=json.dumps({
-            'start_session': user
+            'start_session': tutor_number
         }))
 
     async def add_user(self, event):
@@ -133,3 +134,8 @@ class SessionConsumer(AsyncWebsocketConsumer):
     def disable_channel_name(self, channel_id):
         """Delete ChannelNames Object.delete()"""
         return ChannelNames.objects.disable(channel_id=channel_id)
+
+    @database_sync_to_async
+    def get_tutor_number(self, tutor_id, com_method='Appear'):
+        """Get Number or URl to contact tutor Object.get()"""
+        return CommunicationMethodNumber.objects.get_number(tutor_id, com_method)[0]

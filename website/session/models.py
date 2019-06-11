@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from .managers import ChannelRoomManager, ChannelNamesManager
+from .managers import ChannelRoomManager, ChannelNamesManager, CommunicationMethodNumberManager
 from django.urls import reverse
 
 
@@ -55,6 +55,23 @@ class CommunicationMethods(models.Model):
 
     def __str__(self):
         return '{}'.format(self.method)
+
+
+class CommunicationMethodNumber(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    com_method = models.ForeignKey(CommunicationMethods, on_delete=models.CASCADE)
+    number = models.CharField("Number", max_length=128)
+
+    is_active = models.BooleanField(default=True)
+
+    objects = CommunicationMethodNumberManager()
+
+    class Meta:
+        verbose_name = 'Communication method number'
+        verbose_name_plural = 'Communication method numbers'
+
+    def __str__(self):
+        return '{}'.format(self.com_method)
 
 
 class Session(models.Model):

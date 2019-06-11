@@ -4,7 +4,7 @@
     "pk": 1,
     "fields": {
       "method": "Skype",
-      "is_active": "True"
+      "is_active": "False"
     }
   },
   {
@@ -12,7 +12,7 @@
     "pk": 2,
     "fields": {
       "method": "Telegram",
-      "is_active": "True"
+      "is_active": "False"
     }
   },
     {
@@ -20,6 +20,14 @@
     "pk": 3,
     "fields": {
       "method": "Teamspeak",
+      "is_active": "False"
+    }
+  },
+   {
+    "model": "session.communicationmethods",
+    "pk": 4,
+    "fields": {
+      "method": "Appear",
       "is_active": "True"
     }
   }

@@ -28,16 +28,16 @@
                 <h5>Balance:</h5>{{ object.sessioncoins.coins }}
             </div>
             {% if object.role == 'Student' %}
-                <div style="float: left;  width: 50%">
-                    <h5>Student details</h5>
-                    <p>Languages: {{ object.studentdetails.languages }}</p>
-                    <p>Communication Methods: {% for method in object.studentdetails.communication_methods.all %}
-                        | {{ method }} |
-                    {% endfor %}</p>
-                    <button class="primaryAction" type="submit"><a
-                            href="{% url 'session:update-student-details' object.studentdetails.user_id %}">Edit</a>
-                    </button>
-                </div>
+{#                <div style="float: left;  width: 50%">#}
+{#                    <h5>Student details</h5>#}
+{#                    <p>Languages: {{ object.studentdetails.languages }}</p>#}
+{#                    <p>Communication Methods: {% for method in object.communicationmethodnumber_set.all %}#}
+{#                        | {{ method }} |#}
+{#                    {% endfor %}</p>#}
+{#                    <button class="primaryAction" type="submit"><a#}
+{#                            href="{% url 'session:update-student-details' object.studentdetails.user_id %}">Edit</a>#}
+{#                    </button>#}
+{#                </div>#}
                 {% if request.user.id == object.id %}
                     <div>
                     ---------------------------------------------------------------------------------
@@ -51,9 +51,14 @@
                 <div style="float: left;  width: 50%">
                     <h5>Tutor details</h5>
                     <p>Languages: {{ object.tutordetails.languages }}</p>
-                    <p>Communication Methods: {% for method in object.tutordetails.communication_methods.all %}
-                        | {{ method }} |
+                    <p>{% if object.communicationmethodnumber_set.all %}</p>
+                    <p>{% for method in object.communicationmethodnumber_set.all %}
+                         {{ method.com_method }} :  {{ method.number }}
                     {% endfor %}</p>
+                        {% else %}
+                        <button class="primaryAction" type="submit"><a
+                        href="{% url 'session:add_com_number' %}">Add Number</a></button>
+                        {% endif %}
                     <p>DoB: {{ object.tutordetails.dob }}</p>
                     <p>CV: {{ object.tutordetails.cv_name }}</p>
                     <p>Resume: {{ object.tutordetails.short_resume }}</p>

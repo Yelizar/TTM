@@ -68,3 +68,12 @@ class ChannelNamesManager(models.Manager):
                 o.delete()
                 return True
         return False
+
+
+class CommunicationMethodNumberManager(models.Manager):
+
+    def get_number(self, user_id, com_method):
+        obj = self.get(user_id=user_id, com_method__method=com_method, is_active=True)
+        if obj:
+            return obj.number, False
+        return False

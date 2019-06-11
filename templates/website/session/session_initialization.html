@@ -85,7 +85,7 @@
                 $('#'+removedUser['username']).remove()
             }
             else if (data['start_session']){
-                window.location.href = 'http://127.0.0.1:8000/session/';
+                window.location.href =  data['start_session'];
                 sessionSocket.close()
             }
         };

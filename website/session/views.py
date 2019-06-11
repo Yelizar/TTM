@@ -1,9 +1,9 @@
-from django.shortcuts import render, redirect, reverse, get_object_or_404
+from django.shortcuts import render, reverse, get_object_or_404
 from website.access.models import *
-from django.views.generic import View, UpdateView
+from django.views.generic import View, UpdateView, CreateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
-from .models import ChannelRoom
+from .models import *
 from django.core.cache import cache
 from django.utils.safestring import mark_safe
 import json
@@ -33,18 +33,32 @@ class ProfileDetailsView(LoginRequiredMixin, View):
 
 class TutorDetailsUpdateView(UpdateView):
     model = TutorDetails
-    fields = ['languages', 'communication_methods',
-              'dob', 'phone_number', 'short_resume', 'cv']
+    fields = ['languages', 'dob', 'phone_number', 'short_resume', 'cv']
     template_name = 'website/session/update_details.html'
 
     def get_success_url(self):
         return reverse('session:profile', kwargs={'pk': self.object.user_id})
 
 
-class StudentDetailsUpdateView(UpdateView):
-    model = StudentDetails
-    fields = ['languages', 'communication_methods']
-    template_name = 'website/session/update_details.html'
+# class StudentDetailsUpdateView(UpdateView):
+#     model = StudentDetails
+#     fields = ['languages', 'communication_methods']
+#     template_name = 'website/session/update_details.html'
+#
+#     def get_success_url(self):
+#         return reverse('session:profile', kwargs={'pk': self.object.user_id})
+
+
+class CommunicationMethodNumberCreateView(CreateView):
+    template_name = 'website/session/add_com_number.html'
+    model = CommunicationMethodNumber
+    fields = ['number']
+
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        # Temporarily function is limited. Access is allowed only to Appear.in
+        form.instance.com_method = CommunicationMethods.objects.get(id=4)
+        return super(CommunicationMethodNumberCreateView, self).form_valid(form)
 
     def get_success_url(self):
         return reverse('session:profile', kwargs={'pk': self.object.user_id})
@@ -62,5 +76,3 @@ class SessionInitialization(View):
         return render(request, self.template_name, locals())
 
 
-def session(request):
-    return render(request, 'website/session/SESSION(TEMP).html')

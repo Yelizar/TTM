@@ -4,6 +4,9 @@ from django.conf import settings
 from django.utils.deprecation import MiddlewareMixin
 from .models import CustomUser
 from django.contrib.sessions.models import Session
+from website.session.models import Session as InitializedSessions
+
+from django.shortcuts import HttpResponse, reverse, redirect
 from django.utils import timezone
 
 
@@ -28,3 +31,11 @@ class ActiveUserMiddleware(MiddlewareMixin):
         for user in online_users:
             user.online_status(online=False)
         # -----------------------------------------------------------------------------------
+
+        # Checks for completeness of sessions
+        initialized_session = InitializedSessions.objects.get_last_session(current_user=current_user)
+        if initialized_session:
+            if request.path != '/session-completion/{}'.format(initialized_session.id):
+                return redirect(reverse('session:session-completion', kwargs={'session_id': initialized_session.id}))
+
+

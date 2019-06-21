@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from .managers import ChannelRoomManager, ChannelNamesManager, CommunicationMethodNumberManager
+from .managers import ChannelRoomManager, ChannelNamesManager, CommunicationMethodNumberManager, SessionCoinsManager, SessionManager
 from django.urls import reverse
 
 
@@ -32,16 +32,10 @@ class SessionCoins(models.Model):
         verbose_name = 'Session coin'
         verbose_name_plural = 'Session coins'
 
+    objects = SessionCoinsManager()
+
     def __str__(self):
         return '{}'.format(self.user)
-
-    def add_coins(self, quantity):
-        self.coins += quantity
-        self.save()
-
-    def remove_coins(self, quantity):
-        self.coins -= quantity
-        self.save()
 
 
 class CommunicationMethods(models.Model):
@@ -86,8 +80,11 @@ class Session(models.Model):
     student_confirm = models.BooleanField(default=False)
     tutor_confirm = models.BooleanField(default=False)
     is_going = models.BooleanField(default=False)
+    rate = models.PositiveSmallIntegerField("Session Rate", help_text='Default 5 starts', default=5)
     created = models.DateTimeField(auto_now=False, auto_now_add=True)
     updated = models.DateTimeField(auto_now=True, auto_now_add=False)
+
+    objects = SessionManager()
 
     class Meta:
         verbose_name = 'Session'

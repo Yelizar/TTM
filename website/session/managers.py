@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models import Q
+from django.db import DataError
 
 
 class ChannelRoomManager(models.Manager):
@@ -72,8 +74,36 @@ class ChannelNamesManager(models.Manager):
 
 class CommunicationMethodNumberManager(models.Manager):
 
-    def get_number(self, user_id, com_method):
-        obj = self.get(user_id=user_id, com_method__method=com_method, is_active=True)
+    def get_number(self, user_id, communication_method):
+        obj = self.get(user_id=user_id, com_method__method=communication_method, is_active=True)
         if obj:
             return obj.number, False
         return False
+
+
+class SessionCoinsManager(models.Manager):
+
+    def coin_operations(self, user_id, operation=None, quantity=1):
+        obj = self.get(user_id=user_id)
+        if obj:
+            try:
+                if operation == "add":
+                    obj.coins += quantity
+                if operation == "remove":
+                    obj.coins -= quantity
+                obj.save()
+                return True
+            except DataError:
+                return False
+        return False
+
+
+class SessionManager(models.Manager):
+
+    def get_last_session(self, current_user):
+        obj_set = self.filter(Q(student_id=current_user.id, is_going=True)
+                        | Q(tutor_id=current_user.id, is_going=True))
+        if obj_set:
+            return obj_set.first()
+        return None
+

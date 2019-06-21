@@ -3,7 +3,7 @@ from api.serializers import UserSerializer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 import json
-from .models import ChannelRoom, ChannelNames, CommunicationMethodNumber
+from .models import ChannelRoom, ChannelNames, CommunicationMethodNumber, Session, SessionCoins
 
 
 class SessionConsumer(AsyncWebsocketConsumer):
@@ -55,14 +55,20 @@ class SessionConsumer(AsyncWebsocketConsumer):
         if 'chosenTutor' in text_data_json.keys():
             user = await self.get_serialized_user(text_data_json['chosenTutor'])
             for t in self.channelRoom.tutor.all():
+                # This loop is getting tutor data(id & channel name) => to disconnect from room
                 if t.username != user.data['username']:
                     remove_user = await self.get_serialized_user(t)
                     channel_obj = await self.get_channel_name(remove_user.data['id'])
                     await self.disconnect(close_code=400, remove_user=remove_user,
                                           channel_name=channel_obj.channel_name)
-            tutor_number = await self.get_tutor_number(tutor_id=user.data['id'])
-            await self.send_message('start_session',
-                                    tutor_number)
+            if await self.take_coin(user_id=self.user.data['id']):
+                await self.session_initialization(student_id=self.user.data['id'], tutor_id=user.data['id'], is_going=True)
+                tutor_number = await self.get_tutor_number(tutor_id=user.data['id'])
+                await self.send_message('start_session',
+                                        tutor_number)
+            else:
+                # test exception
+                print("Student don't have enough coins for session ")
 
     async def start_session(self, event):
         tutor_number = event['message']
@@ -103,12 +109,12 @@ class SessionConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_channel_room(self):
         """Get Room object <ChannelRoomModel>. Collection users in channel."""
-        return ChannelRoom.objects.get_or_new(self.session_name)[0]
+        return ChannelRoom.objects.get_or_new(username=self.session_name)[0]
 
     @database_sync_to_async
     def add_to_channel_room(self):
         """Add User to Room Object"""
-        return ChannelRoom.objects.add_visitor(self.user.data['username'], self.channelRoom)
+        return ChannelRoom.objects.add_visitor(username=self.user.data['username'], room=self.channelRoom)
 
     @database_sync_to_async
     def remove_from_channel_room(self, username):
@@ -118,12 +124,12 @@ class SessionConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def close_room(self):
         """Delete ChannelRoom Object.delete()"""
-        return ChannelRoom.objects.close(self.channelRoom)
+        return ChannelRoom.objects.close(room=self.channelRoom)
 
     @database_sync_to_async
     def set_channel_name(self):
         """Assigns channel name to specific user. Channel name getting from Redis DB"""
-        return ChannelNames.objects.create(channel_id=self.user.data['id'], channel_name=self.channel_name)
+        return ChannelNames.objects.get_or_create(channel_id=self.user.data['id'], channel_name=self.channel_name)
 
     @database_sync_to_async
     def get_channel_name(self, channel_id):
@@ -138,4 +144,15 @@ class SessionConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_tutor_number(self, tutor_id, com_method='Appear'):
         """Get Number or URl to contact tutor Object.get()"""
-        return CommunicationMethodNumber.objects.get_number(tutor_id, com_method)[0]
+        return CommunicationMethodNumber.objects.get_number(user_id=tutor_id, communication_method=com_method)[0]
+
+    @database_sync_to_async
+    def take_coin(self, user_id):
+        """Change quantity of session coins Object.coins -= quantity <SessionCoins>"""
+        return SessionCoins.objects.coin_operations(user_id=user_id, operation='remove', quantity=1)
+
+    @database_sync_to_async
+    def session_initialization(self, student_id, tutor_id, is_going=True, communication_method=4, language=1):
+        """Session initializer. Create Session Object.create()"""
+        return Session.objects.create(student_id=student_id, tutor_id=tutor_id, session_coin=1, language_id=language,
+                                      communication_method_id=communication_method, is_going=is_going)

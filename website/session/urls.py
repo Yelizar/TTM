@@ -11,4 +11,5 @@ urlpatterns = [
     # path('profile/update-s-details/<int:pk>', views.StudentDetailsUpdateView.as_view(), name='update-student-details'),
     path('session-initialization/<session_name>/', views.SessionInitialization.as_view(), name='session-initialization'),
     path('profile/add_com_number/',  views.CommunicationMethodNumberCreateView.as_view(), name='add_com_number'),
+    path('session-completion/<session_id>', views.SessionCompletion.as_view(), name='session-completion')
 ]

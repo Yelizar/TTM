@@ -19,8 +19,7 @@ class StudentDetailsInline(admin.TabularInline):
 class TutorDetailsAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {'fields': ('user',)}),
-        (_('Details'), {'fields': ('phone_number', 'dob', 'cv', 'short_resume', 'languages',
-                                   'communication_methods', 'is_active')}),
+        (_('Details'), {'fields': ('phone_number', 'dob', 'cv', 'short_resume', 'languages', 'is_active')}),
     )
     list_display = ('user', 'is_active',)
 
@@ -36,7 +35,7 @@ class TutorStatusAdmin(admin.ModelAdmin):
 class StudentDetailsAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {'fields': ('user',)}),
-        (_('Details'), {'fields': ('languages', 'communication_methods', 'is_active')}),
+        (_('Details'), {'fields': ('languages', 'is_active')}),
     )
     list_display = ('user', 'is_active',)
 

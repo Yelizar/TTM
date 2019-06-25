@@ -92,11 +92,9 @@ class SessionCompletion(View):
             try:
                 session = Session.objects.get(id=kwargs['session_id'])
                 # should be rebuild
-                if request.user.role == 'student':
+                if request.user.role == 'Student':
                     session.student_confirm = form.cleaned_data.get('confirmed')
-                if request.user.role == 'tutor':
-                    session.tutor_confirm = form.cleaned_data.get('confirmed')
-                if session.tutor_confirm and session.student_confirm:
+                if session.student_confirm:
                     session.is_going = False
                 session.rate = form.cleaned_data.get('rate')
                 session.save()

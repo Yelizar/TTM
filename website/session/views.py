@@ -56,10 +56,14 @@ class CommunicationMethodNumberCreateView(CreateView):
     fields = ['number']
 
     def form_valid(self, form):
-        form.instance.user = self.request.user
-        # Temporarily function is limited. Access is allowed only to Appear.in
-        form.instance.com_method = CommunicationMethods.objects.get(id=4)
-        return super(CommunicationMethodNumberCreateView, self).form_valid(form)
+        try:
+            CommunicationMethodNumber.objects.get(user=self.request.user)
+            return redirect(reverse('session:profile', kwargs={'pk': self.request.user.id}))
+        except CommunicationMethodNumber.DoesNotExist:
+            form.instance.user = self.request.user
+            # Temporarily function is limited. Access is allowed only to Appear.in
+            form.instance.com_method = CommunicationMethods.objects.get(id=4)
+            return super(CommunicationMethodNumberCreateView, self).form_valid(form)
 
     def get_success_url(self):
         return reverse('session:profile', kwargs={'pk': self.object.user_id})

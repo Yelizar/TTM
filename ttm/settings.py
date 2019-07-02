@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'api',
     'website.access',
     'website.session',
+    'tplatform',
     # rest apps
     'rest_framework',
     'rest_framework.authtoken',

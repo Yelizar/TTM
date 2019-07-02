@@ -53,12 +53,13 @@ class CustomUserAdmin(UserAdmin):
     list_filter = ('is_staff', 'is_superuser', 'is_active', 'role', 'is_online')
 
     def get_inline_instances(self, request, obj=None):
-        if obj.role == 'Tutor':
-            inlines = [TutorDetailsInline, TutorStatusInline]
-            return [inline(self.model, self.admin_site) for inline in inlines]
-        elif obj.role == 'Student':
-            inlines = [StudentDetailsInline]
-            return [inline(self.model, self.admin_site) for inline in inlines]
+        if obj:
+            if obj.role == 'Tutor':
+                inlines = [TutorDetailsInline, TutorStatusInline]
+                return [inline(self.model, self.admin_site) for inline in inlines]
+            elif obj.role == 'Student':
+                inlines = [StudentDetailsInline]
+                return [inline(self.model, self.admin_site) for inline in inlines]
         else:
             return [inline(self.model, self.admin_site) for inline in self.inlines]
 

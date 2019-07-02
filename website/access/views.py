@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect, reverse
+from django.shortcuts import render, redirect, reverse, HttpResponse
 from django.views import View
 from django.contrib.auth import authenticate, login, logout
 from .models import TutorDetails, TutorStatus, StudentDetails

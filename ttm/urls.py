@@ -24,6 +24,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('bot/', include('bot.urls')),
     path('api/', include('api.urls')),
+    path('tplatform/', include('tplatform.urls')),
     # temporary "pattern" of url
     path('', include('website.access.urls')),
     path('', include('website.session.urls')),

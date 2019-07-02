@@ -2,7 +2,7 @@
 {% block titel %} Sign Up 1 {% endblock %}
 
 {% block content %}
-    <div class="in-form">
+    <div class="in-form" id="reg-form">
         <form class="access-form" method="POST" action="{% url 'access:registration' %}">
             {% csrf_token %}
             {{ form.as_p }}
@@ -21,5 +21,21 @@
         </a></button>
 
     {% endif %}
+
+    <script>
+       $(document).ready(function() {
+        $('.access-form').submit(function() { // catch the form's submit event
+            $.ajax({ // create an AJAX call...
+                data: $(this).serialize(), // get the form data
+                type: $(this).attr('method'), // GET or POST
+                url: $(this).attr('action'), // the file to call
+                success: function(response) { // on success..
+                    $("#reg-form").html(response)
+                }
+            });
+            return false;
+        });
+    });
+    </script>
 
 {% endblock %}

@@ -27,36 +27,54 @@ class Interlocutor:
                 name=self.name,
                 chat_type=self.chat_type)
 
-    def set_role(self, role):
-        return TelegramUser.objects.filter(chat_id=self.chat_id).update(role=role)
+    def update_details(self, detail, param):
+        details = {detail: param}
+        return TelegramUser.objects.filter(chat_id=self.chat_id).update(**details)
 
 
 def _display_help(param=None):
     return render_to_string('tplatform/help.md')
 
 
-def _send_roles(param=None):
-    return render_to_string('tplatform/send_roles.md')
+def _display_roles(param=None):
+    return render_to_string('tplatform/roles.md')
+
+
+def _display_languages(param=None):
+        return render_to_string('tplatform/languages.md')
 
 
 def _display_status(user_info):
-    return "Name: {name} \nRole: {role} \nMore Info...".format(name=user_info.name, role=user_info.role)
+    return "Name: {name} \nRole: {role} \nLanguage: {language}"\
+        .format(name=user_info.name, role=user_info.role, language=user_info.language)
 
 
 COMMANDS = {
             '/start':       (_display_help, None),
             '/help':        (_display_help, None),
             '/status':      (_display_status, None),
-            '/role':        (_send_roles,
+            '/role':        (_display_roles,
                              InlineKeyboardMarkup(inline_keyboard=[
                                  [InlineKeyboardButton(text='Student', callback_data='student')],
                                  [InlineKeyboardButton(text='Tutor', callback_data='tutor')]
                               ])),
+            '/language':    (_display_languages,
+                             InlineKeyboardMarkup(inline_keyboard=[
+                                 [InlineKeyboardButton(text='English', callback_data='eng')],
+                                 [InlineKeyboardButton(text='Russian', callback_data='rus')]
+                              ])),
         }
 
+# Callback for callbacks =)
+EDIT_MESSAGE_TEXT = {
+            'tutor':    ("To start a session update your details /details", None),
+            'student':  ("To start a session choose language /language", None)
 
-def _command_handler(cmd):
-    result = COMMANDS.get(cmd.lower())
+}
+
+
+def _command_handler(cmd, blank):
+    result = blank.get(cmd.split()[0].lower())
     return result
 
 
@@ -110,32 +128,46 @@ class TelegramBotView(View):
             if message_type == 'chat':
                 if is_created:
                     TelePot.sendMessage(user.chat_id, 'Hi {username}'.format(username=user.name))
+                command = message['message']['text']
+                answer = _command_handler(cmd=command, blank=COMMANDS)
+                _param = None
+                # Display Status
+                if answer and answer[0].__name__ == '_display_status':
+                    _param = user
+                # Display Roles
+                elif answer and answer[0].__name__ == '_send_roles':
+                    if user.role is not None:
+                        answer = "You are already {role}".format(role=user.role)
+                # Display if Command is not recognized
+                elif answer is None:
+                    answer = "Sorry, I'm still learning, so I don't understand you \n" \
+                             "Please check available commands /help"
+                if isinstance(answer, str):
+                    TelePot.sendMessage(chat_id, answer)
+                else:
+                    TelePot.sendMessage(chat_id, answer[0](_param), reply_markup=answer[1])
+
             elif message_type == 'callback_query':
                 callback = (message['callback_query'])
-                TelePot.answerCallbackQuery(message['callback_query']['id'],
-                                            'Now you are {role}'.format(role=message['callback_query']['data']))
-                interlocutor.set_role(role=callback['data'])
-                TelePot.editMessageReplyMarkup((telepot.message_identifier(msg=callback['message'])))
-                return JsonResponse({}, status=200)
+                callback_answer = None
+                answer = None
+                _param = None
+                if callback['data'] == 'student' or callback['data'] == 'tutor':
+                    if interlocutor.update_details(detail='role', param=callback['data']):
+                        callback_answer = "Role is established: {role}".format(role=callback['data'])
+                    if callback['data'] == 'tutor':
+                        answer = _command_handler(cmd='tutor', blank=EDIT_MESSAGE_TEXT)
+                    elif callback['data'] == 'student':
+                        answer = _command_handler(cmd='student', blank=EDIT_MESSAGE_TEXT)
+
+                elif callback['data'] == 'eng' or callback['data'] == 'rus':
+                    if interlocutor.update_details(detail='language', param=callback['data']):
+                        callback_answer = "Language is established: {language}".format(language=callback['data'])
+                        answer = ("Language is established", None)
+                TelePot.answerCallbackQuery(callback['id'], callback_answer)
+                TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),
+                                        answer[0], reply_markup=answer[1])
+            return JsonResponse({}, status=200)
         except ValueError:
             return HttpResponseBadRequest('Invalid request body')
-        command = message['message']['text']
-        answer = _command_handler(cmd=command)
-        _param = None
-        # Display Status
-        if answer and answer[0].__name__ == '_display_status':
-            _param = user
-        # Display Roles
-        elif answer and answer[0].__name__ == '_send_roles':
-            if user.role is not None:
-                answer = "You are already {role}".format(role=user.role)
-        # Display if Command is not recognized
-        elif answer is None:
-            answer = "Sorry, I'm still learning, so I don't understand you \n"\
-                     "Please check available commands /help"
-        if isinstance(answer, str):
-            TelePot.sendMessage(chat_id, answer)
-        else:
-            TelePot.sendMessage(chat_id, answer[0](_param), reply_markup=answer[1])
 
-        return JsonResponse({}, status=200)

@@ -9,5 +9,6 @@ Available commands:
 */language* - Language selection (English or Russian)
 */session* - Session options (only for Students)
 */details* - Help with setting up an account (only for Tutors)
+*/notifications* - Turn ON/OFF tutors notification(only for Tutors)
  
 

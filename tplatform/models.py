@@ -3,6 +3,10 @@ from django.db import models
 # Create your models here.
 
 
+def tutor_directory_path(instance, filename):
+    return 'website/tutors/chat_id-{0}_{1}/cv/{2}'.format(instance.chat_id, instance.name, filename)
+
+
 class TelegramUser(models.Model):
     chat_id = models.CharField(max_length=64)
     username = models.CharField(max_length=128, blank=True, null=True)
@@ -11,6 +15,10 @@ class TelegramUser(models.Model):
     role = models.CharField(max_length=64, blank=True, null=True)
     language = models.CharField(max_length=64, blank=True, null=True)
     appear = models.CharField(max_length=64, blank=True, null=True)
+    notice = models.BooleanField(default=False)
+    phone = models.CharField(max_length=17, blank=True, null=True)
+    dob = models.DateField('Date of birthday', auto_now=False, auto_now_add=False, blank=True, null=True)
+    cv = models.FileField(upload_to=tutor_directory_path, blank=True, null=True)
 
     is_active = models.BooleanField(default=True)
 

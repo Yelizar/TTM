@@ -82,6 +82,8 @@ def _display_details(param=None):
 
 
 def _display_notifications(notice):
+    if notice is None:
+        notice = 'OFF'
     return render_to_string('tplatform/notifications.md').format(status=notice)
 
 
@@ -106,7 +108,7 @@ def _display_notification_changed(notice):
 
 
 def _display_notification_not_changed(param=None):
-    return "Something went wrong, Please check your command. /notification"
+    return "Something went wrong, Please check your command. /notifications "
 
 
 def _display_tutor_notice(user_info):

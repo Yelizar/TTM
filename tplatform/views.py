@@ -1,5 +1,6 @@
 import json
 import telepot
+import types
 from telepot.namedtuple import InlineKeyboardButton, InlineKeyboardMarkup
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse
 from django.views.generic import View
@@ -158,7 +159,8 @@ COMMANDS = {
             '/session':             (_display_session, make_inline_keyboard([('Initialize', 'init'),
                                                                      ('Cancel', 'cancel')]), 'student'),
             '/details':             (_display_details, None, 'tutor'),
-            '/notifications':       (_display_notifications, None, 'tutor'),
+            '/notifications':       (_display_notifications, make_inline_keyboard([('ON', 'on'),
+                                                                     ('OFF', 'off')]), 'tutor'),
 
             # Commands which user are not allowed to be found
             '/_whaaaat?':                            (_display_sorry, None, None),
@@ -166,8 +168,6 @@ COMMANDS = {
             '/_role_assigned':                       (_display_role_assigned, None, None),
             '/_details_has_been_changed':            (_display_details_changed, None, 'tutor'),
             '/_details_has_not_been_changed':        (_display_details_not_changed, None, 'tutor'),
-            '/_notification_has_been_changed':       (_display_notification_changed, None, 'tutor'),
-            '/_notification_has_not_been_changed':   (_display_notification_not_changed, None, 'tutor')
         }
 
 # Callback for callbacks =)
@@ -184,6 +184,8 @@ EDIT_MESSAGE_TEXT = {
             '*skip':                 ("Please wait next session", None),
             '*confirm':              ["To start session follow the link ", None],
             '*reject':               ("Please wait next tutor", None),
+            '*_notification_has_been_changed':       (_display_notification_changed, None),
+            '*_notification_has_not_been_changed':   (_display_notification_not_changed, None)
 
 }
 
@@ -355,14 +357,6 @@ class TelegramBotView(View):
                                     _internal_command = '/_details_has_been_changed'
                                 else:
                                     _internal_command = '/_details_has_not_been_changed'
-                            elif command[0] == '/notifications':
-                                notice = _notice_handler(switcher=detail)
-                                if interlocutor.update_details(details={'notice': notice}):
-                                    _internal_command = '/_notification_has_been_changed'
-                                    _param = detail
-                                else:
-                                    _internal_command = '/_notification_has_not_been_changed'
-                                    _param = user.notice
                             if _internal_command is None:
                                 answer = '/_whaaaat?'
                             else:
@@ -440,9 +434,22 @@ class TelegramBotView(View):
                         session_updater(user, details={'tutor': tutor, 'is_going': True})
                     if callback['data'] == 'reject':
                         answer = _command_handler(cmd='*reject')
+                elif callback['data'] in ['on', 'off']:
+                    notice = _notice_handler(switcher=callback['data'])
+                    if interlocutor.update_details(details={'notice': notice}):
+                        answer = _command_handler(cmd='*_notification_has_been_changed')
+                        _param = callback['data']
+                    else:
+                        answer = _command_handler(cmd='*_notification_has_not_been_changed')
+                        _param = user.notice
+
                 TelePot.answerCallbackQuery(callback['id'], callback_answer)
-                TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),
-                                        answer[0], reply_markup=answer[1])
+                if isinstance(answer[0], types.FunctionType):
+                    TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),
+                                            answer[0](_param), reply_markup=answer[1])
+                else:
+                    TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),
+                                            answer[0], reply_markup=answer[1])
             return JsonResponse({}, status=200)
         except ValueError:
             return HttpResponseBadRequest('Invalid request body')

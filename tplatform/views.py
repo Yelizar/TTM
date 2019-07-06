@@ -98,20 +98,20 @@ def make_inline_keyboard(button_text_data):
 
 
 COMMANDS = {
-            '/start':       (_display_help, None),
-            '/help':        (_display_help, None),
-            '/status':      (_display_status, None),
+            '/start':       (_display_help, None, None),
+            '/help':        (_display_help, None, None),
+            '/status':      (_display_status, None, None),
             '/role':        (_display_roles, make_inline_keyboard([('Student', 'student'),
-                                                                  ('Tutor', 'tutor')])),
+                                                                  ('Tutor', 'tutor')]), None),
             '/language':    (_display_languages, make_inline_keyboard([('English', 'eng'),
-                                                                      ('Russian', 'rus')])),
+                                                                      ('Russian', 'rus')]), None),
             '/session':     (_display_session, make_inline_keyboard([('Initialize', 'init'),
-                                                                     ('Cancel', 'cancel')])),
-            '/details':     (_display_details, None),
+                                                                     ('Cancel', 'cancel')]), 'student'),
+            '/details':     (_display_details, None, 'tutor'),
 
             # Commands which user are not allowed to be found
-            '/details_has_been_changed':        (_display_details_changed, None),
-            '/details_has_not_been_changed':    (_display_details_not_changed, None)
+            '/details_has_been_changed':        (_display_details_changed, None, 'tutor'),
+            '/details_has_not_been_changed':    (_display_details_not_changed, None, 'tutor')
         }
 
 # Callback for callbacks =)
@@ -129,6 +129,10 @@ EDIT_MESSAGE_TEXT = {
             '*reject':               ("Please wait next tutor", None),
 
 }
+
+
+def _access_check(pattern, role):
+    return True if pattern is None or pattern == role else False
 
 
 def _command_handler(cmd):
@@ -224,18 +228,21 @@ class TelegramBotView(View):
                     else:
                         command[0] = '/details_has_not_been_changed'
                 answer = _command_handler(cmd=command[0])
-                _param = None
-                # Display Status
-                if answer and answer[0].__name__ == '_display_status':
-                    _param = user
-                # Display Roles
-                elif answer and answer[0].__name__ == '_send_roles':
-                    if user.role is not None:
-                        answer = "You are already {role}".format(role=user.role)
-                # Display if Command is not recognized
-                elif answer is None:
-                    answer = "Sorry, I'm still learning, so I don't understand you \n" \
-                             "Please check available commands /help"
+                if _access_check(pattern=answer[-1], role=user.role):
+                    _param = None
+                    # Display Status
+                    if answer and answer[0].__name__ == '_display_status':
+                        _param = user
+                    # Display Roles
+                    elif answer and answer[0].__name__ == '_send_roles':
+                        if user.role is not None:
+                            answer = "You are already {role}".format(role=user.role)
+                    # Display if Command is not recognized
+                    elif answer is None:
+                        answer = "Sorry, I'm still learning, so I don't understand you \n" \
+                                 "Please check available commands /help"
+                else:
+                    answer = 'This command is not available to {role}'.format(role=user.role)
                 if isinstance(answer, str):
                     TelePot.sendMessage(chat_id, answer)
                 else:

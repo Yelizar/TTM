@@ -7,7 +7,7 @@ Available commands:
 */status* - Show info and current status
 */role* - Role selection (Student or Tutor)
 */language* - Language selection (English or Russian)
-*/session* - Session options
-*/details* - This command allowed only for Tutors
+*/session* - Session options (only for Students)
+*/details* - Help with setting up an account (only for Tutors)
  
 

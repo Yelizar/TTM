@@ -1,6 +1,5 @@
 import json
 import telepot
-import types
 from telepot.namedtuple import InlineKeyboardButton, InlineKeyboardMarkup
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse
 from django.views.generic import View
@@ -69,46 +68,9 @@ def _display_help(param=None):
     return render_to_string('tplatform/help.md')
 
 
-def _display_roles(param=None):
-    return render_to_string('tplatform/roles.md')
-
-
-def _display_languages(param=None):
-    return render_to_string('tplatform/languages.md')
-
-
-def _display_details(param=None):
-    return render_to_string('tplatform/details.md')
-
-
-def _display_notifications(notice):
-    if notice is None:
-        notice = 'OFF'
-    return render_to_string('tplatform/notifications.md').format(status=notice)
-
-
-def _display_session(param=None):
-    return render_to_string('tplatform/session.md')
-
-
-def _display_details_changed(param=None):
-    return "Grete, details has been changed. /status"
-
-
-def _display_details_not_changed(param=None):
-    return "Something went wrong, Please check your command. /details"
-
-
-def _display_notification_changed(notice):
-    if notice == 'on':
-        answer = "Grete, You are able to receive notifications."
-    else:
-        answer = "Hope you see soon."
-    return answer + "\n Notification: {notice}".format(notice=notice)
-
-
-def _display_notification_not_changed(param=None):
-    return "Something went wrong, Please check your command. /notifications "
+def _display_sorry(param=None):
+    return "Sorry, I'm still learning, so I don't understand you \n" \
+                             "Please check available commands /help"
 
 
 def _display_tutor_notice(user_info):
@@ -121,55 +83,32 @@ def _display_student_notice(user_info):
         format(name=user_info.name, language=user_info.language)
 
 
-def _display_status(user_info):
-    return render_to_string('tplatform/status.md').\
-        format(name=user_info.name, role=user_info.role, language=user_info.language)
-
-
-def _display_sorry(param=None):
-    return "Sorry, I'm still learning, so I don't understand you \n" \
-                             "Please check available commands /help"
-
-
-def _display_not_allowed(role):
-    return 'This command is not available to {role}'.format(role=role)
-
-
-def _display_role_assigned(role):
-    return "Role assigned. To change role contact to administrator. Your role is {role}".format(role=role)
-
-
-def make_inline_keyboard(button_text_data):
+def make_inline_keyboard(button_text_data, back=None):
     """
     :param button_text_data: list. [0] - Name of button [1] - Data of button
     :return: replay_markup(inline keyboard)
     """
     _button_set = []
+    _page = 0
     for text, data in button_text_data:
         _button_set.append([(InlineKeyboardButton(text=text, callback_data=data))])
+    if back:
+        print(back)
+        _button_set.insert(0, [(InlineKeyboardButton(text='Back', callback_data=back))])
+        _button_set.append([(InlineKeyboardButton(text='On Top', callback_data='on_top'))])
     return InlineKeyboardMarkup(inline_keyboard=_button_set)
 
 
 COMMANDS = {
-            '/start':               (_display_help, None, None),
-            '/help':                (_display_help, None, None),
-            '/status':              (_display_status, None, None),
-            '/role':                (_display_roles, make_inline_keyboard([('Student', 'student'),
-                                                                  ('Tutor', 'tutor')]), None),
-            '/language':            (_display_languages, make_inline_keyboard([('English', 'eng'),
-                                                                      ('Russian', 'rus')]), None),
-            '/session':             (_display_session, make_inline_keyboard([('Initialize', 'init'),
-                                                                     ('Cancel', 'cancel')]), 'student'),
-            '/details':             (_display_details, None, 'tutor'),
-            '/notifications':       (_display_notifications, make_inline_keyboard([('ON', 'on'),
-                                                                     ('OFF', 'off')]), 'tutor'),
+            '/start':               (None, [('Placement', '*placement'),
+                                                     ('TalkToMe', '*talk_to_me'),
+                                                     ('TeachForUs', '*teach_for_us')]),
+            '/help':                (_display_help, [('Placement', '*placement'),
+                                                     ('TalkToMe', '*talk_to_me'),
+                                                     ('TeachForUs', '*teach_for_us')]),
 
-            # Commands which user are not allowed to be found
-            '/_whaaaat?':                            (_display_sorry, None, None),
-            '/_command_not_allowed':                 (_display_not_allowed, None, None),
-            '/_role_assigned':                       (_display_role_assigned, None, None),
-            '/_details_has_been_changed':            (_display_details_changed, None, 'tutor'),
-            '/_details_has_not_been_changed':        (_display_details_not_changed, None, 'tutor'),
+            # Command which user are not allowed to be found
+            '/_whaaaat?':                            (_display_sorry, None),
         }
 
 # Callback for callbacks =)
@@ -186,19 +125,27 @@ EDIT_MESSAGE_TEXT = {
             '*skip':                 ("Please wait next session", None),
             '*confirm':              ["To start session follow the link ", None],
             '*reject':               ("Please wait next tutor", None),
-            '*_notification_has_been_changed':       (_display_notification_changed, None),
-            '*_notification_has_not_been_changed':   (_display_notification_not_changed, None)
+
+            '*talk_to_me':              (None, [('Settings', '*s_settings'),
+                                                ('Session', '*s_session')]),
+            '*s_settings':              (None, [('Native Language', '*native_language'),
+                                                ('Learning Language', '*learning_language')]),
+            '*native_language':         (None, [('English', '_eng'),
+                                                ('Russian', '_rus')]),
+            '*learning_language':       (None, [('English', '_eng'),
+                                                ('Russian', '_rus')]),
+
+            '*s_session':               (None, [('Initialize', '_init_session'),
+                                                ('Cancel', '_cancel_session'),
+                                                ('History', '_history_session')]),
+            '*teach_for_us':            (None, [('Settings', '*t_settings'),
+                                                ('Session', '*t_session')]),
+
+            '*t_settings':              (None, [('Appear', '_appear'),
+                                                ('Phone', '_phone')]),
+
 
 }
-
-
-def _access_check(pattern, role):
-    """
-    :param pattern: str. 'student' or 'tutor' only
-    :param role: str. Telegram.object.role
-    :return: bool
-    """
-    return True if pattern is None or pattern == role else False
 
 
 def _notice_handler(boolean=None, switcher=None):
@@ -291,7 +238,7 @@ def notice_tutors(session):
     Connect - contain session id.
     Skip - remove keyboard
     """
-    tutor_list = TelegramUser.objects.filter(role='tutor', notice=True, language=session.language)
+    tutor_list = TelegramUser.objects.filter(notice=True, language=session.language)
     for tutor in tutor_list:
         TelePot.sendMessage(tutor.chat_id, _display_tutor_notice(session),
                             reply_markup=make_inline_keyboard(
@@ -341,117 +288,95 @@ class TelegramBotView(View):
             interlocutor = Interlocutor(name=first_name, chat_id=chat_id, chat_type=chat_type)
             user, is_created = interlocutor.is_authorized()
             if message_type == 'chat':
-                _param = None
                 if is_created:
                     TelePot.sendMessage(user.chat_id, 'Hi {username}'.format(username=user.name))
-                    # command structure example index 0 [/details] index 1 [-phone] index 2 [+64-204-093-75-80]
-                    # /details -phone +64-204-093-75-80
                 text = message['message']['text']
                 command = text.split()
                 answer = _command_handler(cmd=command[0])
-                if answer:
-                    if _access_check(pattern=answer[-1], role=user.role):
-                        if len(command) > 1:
-                            _internal_command = None
-                            detail = command[1][1:].lower()
-                            if command[0] == '/details':
-                                if interlocutor.update_details(details={detail: command[2]}):
-                                    _internal_command = '/_details_has_been_changed'
-                                else:
-                                    _internal_command = '/_details_has_not_been_changed'
-                            if _internal_command is None:
-                                answer = '/_whaaaat?'
-                            else:
-                                answer = _command_handler(cmd=_internal_command)
-                        # Display Status
-                        elif answer[0].__name__ == '_display_status':
-                            _param = user
-                        # Display Roles
-                        elif answer[0].__name__ == '_send_roles':
-                            if user.role is not None:
-                                answer = '/_role_assigned'
-                                _param = user.role
-                        # Display Notification
-                        elif answer[0].__name__ == '_display_notifications':
-                            notice = _notice_handler(boolean=user.notice)
-                            _param = notice
-                    else:
-                        answer = '/_command_not_allowed'
-                        _param = user.role
-                # Display if Command is not recognized
-                else:
-                    answer = '/_whaaaat?'
-                if isinstance(answer, str):
-                    answer = _command_handler(cmd=answer)
-                TelePot.sendMessage(chat_id, answer[0](_param), reply_markup=answer[1])
+                if answer is None:
+                    answer = _command_handler(cmd='/_whaaaat?')
+                TelePot.sendMessage(chat_id, answer[0](), reply_markup=make_inline_keyboard(answer[1]))
 
             elif message_type == 'callback_query':
                 callback = (message['callback_query'])
-                callback_answer = None
+                root = callback['message']['reply_markup']['inline_keyboard'][0][0]['callback_data']
                 answer = None
                 _param = None
-                if callback['data'] in ["student", 'tutor']:
-                    if interlocutor.update_details(details={'role': callback['data']}):
-                        callback_answer = "Role is established: {role}".format(role=callback['data'])
-                        answer = ("Role is established /language", None)
-                    # if callback['data'] == 'tutor':
-                    #     answer = _command_handler(cmd='tutor')
-                    # elif callback['data'] == 'student':
-                    #     answer = _command_handler(cmd='student')
-                elif callback['data'] in ["eng", 'rus']:
-                    if interlocutor.update_details(details={'language': callback['data']}):
-                        callback_answer = "Language is established: {language}".format(language=callback['data'])
+                data = callback['data']
+                if data[0] == '*':
+                    answer = _command_handler(cmd=data)
+                elif 'back_to' in data:
+                    back = data.split('#')
+                    answer = _command_handler(cmd=back[-2])
+                    del back[-1]
+                    root = '#'.join(back)
+                elif data == 'on_top':
+                    answer = _command_handler(cmd='/start')
+                    root = 'back_to #/start'
+                elif data in ["eng", 'rus']:
+                    if interlocutor.update_details(details={'language': data}):
+                        callback_answer = "Language is established: {language}".format(language=data)
                         if user.role == 'student':
                             answer = _command_handler("*student")
                         elif user.role == 'tutor':
                             answer = _command_handler("*tutor")
                         else:
                             answer = _command_handler(cmd='*role')
-                elif callback['data'] in ['init', 'cancel']:
-                    if callback['data'] == 'init':
+                        TelePot.answerCallbackQuery(callback['id'], callback_answer)
+                elif data in ['_init_session', '_cancel_session']:
+                    if data == '_init_session':
                         session, is_created = session_initialize(user)
                         if is_created:
                             answer = _command_handler(cmd='*init_success')
                         else:
                             answer = _command_handler(cmd='*init_invalid')
-                    if callback['data'] == 'cancel':
+                    if data == '_cancel_session':
                         if session_updater(user, details={'is_active': False}):
                             answer = _command_handler(cmd='*cancel_success')
                         else:
                             answer = _command_handler(cmd='*cancel_invalid')
-                elif callback['data'] in ['connect', 'skip'] or 'connect' in callback['data']:
-                    if 'connect' in callback['data']:
-                        student_chat_id = callback['data'].split(" ")[1]
+                elif data in ['connect', 'skip'] or 'connect' in data:
+                    if 'connect' in data:
+                        student_chat_id = data.split(" ")[1]
                         notice_student(student_chat=student_chat_id, user=user)
                         answer = _command_handler(cmd='*connect')
-                    if callback['data'] == 'skip':
+                    if data == 'skip':
                         answer = _command_handler(cmd='*skip')
-                elif callback['data'] in ['confirm', 'reject'] or 'confirm' in callback['data']:
-                    if 'confirm' in callback['data']:
-                        tutor_chat_id = callback['data'].split(" ")[1]
+                elif data in ['confirm', 'reject'] or 'confirm' in data:
+                    if 'confirm' in data:
+                        tutor_chat_id = data.split(" ")[1]
                         tutor = TelegramUser.objects.get(chat_id=tutor_chat_id)
                         answer = _command_handler(cmd='*confirm')
                         answer[0] += " {url}".format(url=tutor.appear)
                         notice_tutor(tutor=tutor)
                         session_updater(user, details={'tutor': tutor, 'is_going': True})
-                    if callback['data'] == 'reject':
+                    if data == 'reject':
                         answer = _command_handler(cmd='*reject')
-                elif callback['data'] in ['on', 'off']:
-                    notice = _notice_handler(switcher=callback['data'])
+                elif data in ['on', 'off']:
+                    notice = _notice_handler(switcher=data)
                     if interlocutor.update_details(details={'notice': notice}):
                         answer = _command_handler(cmd='*_notification_has_been_changed')
-                        _param = callback['data']
+                        _param = data
                     else:
                         answer = _command_handler(cmd='*_notification_has_not_been_changed')
                         _param = user.notice
-
-                TelePot.answerCallbackQuery(callback['id'], callback_answer)
-                if isinstance(answer[0], types.FunctionType):
-                    TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),
-                                            answer[0](_param), reply_markup=answer[1])
+                replay_markup = None
+                if root == '*placement':
+                    _back = 'back_to #/start#{line}'.format(line=data)
+                elif root == 'back_to #/start':
+                    _back = None
+                elif len(root) < len(data):
+                    _back = root
+                else:
+                    _back = root + '#{line}'.format(line=data)
+                if answer[1]:
+                    replay_markup = make_inline_keyboard(button_text_data=answer[1], back=_back)
+                if answer[0] is None:
+                    TelePot.editMessageReplyMarkup(telepot.message_identifier(msg=callback['message']),
+                                                   reply_markup=replay_markup)
                 else:
                     TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),
-                                            answer[0], reply_markup=answer[1])
+                                            answer[0], reply_markup=replay_markup)
             return JsonResponse({}, status=200)
         except ValueError:
             return HttpResponseBadRequest('Invalid request body')

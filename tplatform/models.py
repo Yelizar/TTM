@@ -12,7 +12,6 @@ class TelegramUser(models.Model):
     username = models.CharField(max_length=128, blank=True, null=True)
     name = models.CharField(max_length=128, blank=True, null=True)
     chat_type = models.CharField(max_length=64, blank=True, null=True)
-    role = models.CharField(max_length=64, blank=True, null=True)
     language = models.CharField(max_length=64, blank=True, null=True)
     appear = models.CharField(max_length=64, blank=True, null=True)
     notice = models.BooleanField(default=False)
@@ -35,9 +34,9 @@ class TelegramUser(models.Model):
 
 class TelegramSession(models.Model):
     student = models.ForeignKey(TelegramUser, related_name='Student',
-                                on_delete=models.CASCADE, limit_choices_to={'role': 'student'})
+                                on_delete=models.CASCADE,)
     tutor = models.ForeignKey(TelegramUser, related_name="Tutor",
-                              on_delete=models.CASCADE, limit_choices_to={'role': 'tutor'}, blank=True, null=True)
+                              on_delete=models.CASCADE, blank=True, null=True)
     language = models.CharField(max_length=64, blank=True, null=True)
 
     student_confirm = models.BooleanField(default=False)

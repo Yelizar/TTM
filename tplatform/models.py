@@ -12,7 +12,8 @@ class TelegramUser(models.Model):
     username = models.CharField(max_length=128, blank=True, null=True)
     name = models.CharField(max_length=128, blank=True, null=True)
     chat_type = models.CharField(max_length=64, blank=True, null=True)
-    language = models.CharField(max_length=64, blank=True, null=True)
+    native_language = models.CharField(max_length=64, blank=True, null=True)
+    learning_language = models.CharField(max_length=64, blank=True, null=True)
     appear = models.CharField(max_length=64, blank=True, null=True)
     notice = models.BooleanField(default=False)
     phone = models.CharField(max_length=17, blank=True, null=True)
@@ -29,7 +30,7 @@ class TelegramUser(models.Model):
         verbose_name_plural = 'Telegram Users'
 
     def __str__(self):
-        return '{}'.format(self.username)
+        return '{}'.format(self.name)
 
 
 class TelegramSession(models.Model):

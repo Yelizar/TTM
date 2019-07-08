@@ -1,5 +1,6 @@
 import json
 import telepot
+from django.core.cache import cache
 from telepot.namedtuple import InlineKeyboardButton, InlineKeyboardMarkup
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse
 from django.views.generic import View
@@ -27,7 +28,8 @@ def update_details(user, details):
     :return:
     """
     try:
-        return TelegramUser.objects.filter(chat_id=user.chat_id).update(**details)
+        if TelegramUser.objects.filter(chat_id=user.chat_id).update(**details):
+            return True
     except ValidationError:
         return False
 
@@ -58,7 +60,13 @@ def session_update(user, details):
     :param details: dict. {field: value}
     :return: True or False
     """
-    return None, TelegramSession.objects.filter(student=user, is_active=True).update(**details)
+    try:
+        if TelegramSession.objects.filter(student=user, is_active=True).update(**details):
+            return True
+        else:
+            return False
+    except ValidationError:
+        return False
 
 
 def _display_help(param=None):
@@ -78,6 +86,10 @@ def _display_tutor_notice(user_info):
 def _display_student_notice(user_info):
     return render_to_string('tplatform/student_notice.md'). \
         format(name=user_info.name, language=user_info.language)
+
+
+def _display_details_updated(param=None):
+    return "Details Updated"
 
 
 def make_inline_keyboard(button_text_data, back=None):
@@ -145,7 +157,6 @@ def replaceable_button(buttons, user, condition):
                     index = 1
             elif key == 'user':
                 if user.serializable_value(value[0]) == value[1]:
-                    print('here')
                     index = 1
                 else:
                     index = 0
@@ -174,6 +185,7 @@ COMMANDS = {
                                                      ('TeachForUs', '*teach_for_us')]),
 
             # Command which user are not allowed to be found
+            '/_details_updated':                      (_display_details_updated, None),
             '/_whaaaat?':                            (_display_sorry, None),
         }
 
@@ -221,10 +233,10 @@ EDIT_MESSAGE_TEXT = {
                                                         {'user': ('is_active', False)})),
             '*notification':            (None, None, ([('On', '_notice_on'),
                                                       ('Off', '_notice_off')],
-                                                        {'user': ('notice', True)})),
+                                                        {'user': ('notice', False)})),
 
-            '*t_settings':              (None, [('Appear', '_appear'),
-                                                ('Phone', '_phone'),
+            '*t_settings':              (None, [('Appear', '_appear#await'),
+                                                ('Phone', '_phone#await'),
                                                 ('Native Language', '*native_language')]),
 
 }
@@ -261,14 +273,17 @@ def _param_handler(cmd, user, root):
     answer = None
     if len(data) == 1:
         func, param = INTERNAL_COMMANDS.get(cmd.lower(), None)
-        _, is_created = func(user, param)
-        if is_created:
+        is_updated = func(user, param)
+        if is_updated:
             current_folder = root.split('#')
             answer = _command_handler(cmd=current_folder[-1])
-        return is_created, answer
+        return is_updated, answer
     elif len(data) == 2:
         field, param = data
-        if update_details(user=user, details={field: param}):
+        if param == 'await':
+            cache.set('{chat_id}'.format(chat_id=user.chat_id), '{field}'.format(field=field[0:]), 90)
+            return True, None
+        elif update_details(user=user, details={field: param}):
             return True, None
         else:
             return False, None
@@ -351,11 +366,16 @@ class TelegramBotView(View):
                 if is_created:
                     TelePot.sendMessage(interlocutor.chat_id, 'Hi {username}'.format(username=interlocutor.name))
                 text = message['message']['text']
+                _value = cache.get(str(chat_id))
                 command = text.split()
                 answer = _command_handler(cmd=command[0])
-                if answer is None:
+                if cache.get(str(chat_id)):
+                    if update_details(user=interlocutor, details={_value: text}):
+                        answer = _command_handler(cmd='/_details_updated')
+                        cache.delete(str(chat_id))
+                elif answer is None:
                     answer = _command_handler(cmd='/_whaaaat?')
-                if answer[1]:
+                elif answer[1]:
                     replay_markup = make_inline_keyboard(button_text_data=answer[1], back=None)
                 TelePot.sendMessage(chat_id, answer[0](), reply_markup=replay_markup)
             elif message_type == 'callback_query':
@@ -409,10 +429,12 @@ class TelegramBotView(View):
                 else:
                     _back = root + '#{line}'.format(line=data)
                 if answer:
-                    print(answer)
                     try:
                         if isinstance(answer[2], tuple):
-                            buttons = replaceable_button(buttons=answer[2][0], user=interlocutor, condition=answer[2][1])
+                            buttons = replaceable_button(buttons=answer[2][0], user=TelegramUser.objects.get_or_create(
+                                chat_id=chat_id,
+                                name=first_name,
+                                chat_type=chat_type)[0], condition=answer[2][1])
                             replay_markup = make_inline_keyboard(button_text_data=buttons, back=_back)
                     except IndexError:
                         if isinstance(answer[1], list):

@@ -313,7 +313,6 @@ def _param_handler(cmd, user, root):
             return False, None
     elif len(data) == 3:
         field, next_question, param = data
-        print(field, param)
         return True, _command_handler(cmd=next_question)
 
 
@@ -389,10 +388,8 @@ def check_session_confirm(interlocutor):
     last_session = TelegramSession.objects.get_last_session(current_user=interlocutor)
     if last_session:
         if interlocutor.pk == last_session.tutor.pk and last_session.tutor_confirm is False:
-            print('heasdfre')
             answer = _command_handler('/t_confirm_session')
         elif interlocutor.pk == last_session.student.pk and last_session.student_confirm is False:
-            print('here')
             answer = _command_handler('/s_confirm_session')
         if answer:
             return answer

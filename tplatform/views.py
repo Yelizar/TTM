@@ -10,6 +10,8 @@ from django.conf import settings
 from .models import TelegramUser, TelegramSession
 from django.template.loader import render_to_string
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
+import os
 import pprint
 
 
@@ -78,14 +80,17 @@ def _display_sorry(param=None):
                              "Please check available commands /help"
 
 
-def _display_tutor_notice(user_info):
+def _display_tutor_notice(session):
     return render_to_string('tplatform/tutor_notice.md').\
-        format(name=user_info.student.name, language=user_info.language)
+        format(name=session.student.name, language=session.language)
 
 
 def _display_student_notice(user_info):
     return render_to_string('tplatform/student_notice.md'). \
-        format(name=user_info.name, language=user_info.language)
+        format(name=user_info.name, language=user_info.native_language)
+
+def _display_session_confirm():
+    return "Please confirm last session"
 
 
 def _display_details_updated(param=None):
@@ -183,6 +188,12 @@ COMMANDS = {
             '/help':                (_display_help, [('Placement', '*placement'),
                                                      ('TalkToMe', '*talk_to_me'),
                                                      ('TeachForUs', '*teach_for_us')]),
+            '/s_confirm_session':       (_display_session_confirm, [('Excellent', '_session_excellent'),
+                                                ('Nice', '_session_nice'),
+                                                ('Terrible', '_session_terrible'),
+                                                ('Canceled', '_s_session_canceled')]),
+            '/t_confirm_session':       (_display_session_confirm, [('Done', '_session_done'),
+                                                ('Canceled', '_t_session_canceled')]),
 
             # Command which user are not allowed to be found
             '/_details_updated':                      (_display_details_updated, None),
@@ -198,6 +209,8 @@ EDIT_MESSAGE_TEXT = {
     #   _   |    Commands   #
     #       |               #
     #   #   |    Divider    #
+    #       |               #
+    # await |Wait an answer #
     #########################
     """
             '*init_success':         ("Session is initialized /session", None),
@@ -237,8 +250,8 @@ EDIT_MESSAGE_TEXT = {
 
             '*t_settings':              (None, [('Appear', '_appear#await'),
                                                 ('Phone', '_phone#await'),
+                                                ('CV', '_cv#await'),
                                                 ('Native Language', '*native_language')]),
-
 }
 
 
@@ -247,7 +260,18 @@ INTERNAL_COMMANDS = {
             '_cancel_session':          (session_update, {'is_active': False}),
             '_notice_on':               (update_details, {'notice': True}),
             '_notice_off':              (update_details, {'notice': False}),
-            '_apply':                   (apply, None)
+            '_apply':                   (apply, None),
+            '_session_excellent':       (session_update, {'student_confirm': True, 'rate': 5,
+                                                          'is_going': False}),
+            '_session_nice':            (session_update, {'student_confirm': True, 'rate': 4,
+                                                          'is_going': False}),
+            '_session_terrible':        (session_update, {'student_confirm': True, 'rate': 3,
+                                                          'is_going': False}),
+            '_session_done':            (session_update, {'tutor_confirm': True, 'is_active': False}),
+            '_t_session_canceled':      (session_update, {'tutor_confirm': True, 'is_active': False,
+                                                          'rate': 0}),
+            '_s_session_canceled':      (session_update, {'tutor_confirm': True, 'is_going': False,
+                                                          'rate': 0})
 }
 
 
@@ -287,6 +311,10 @@ def _param_handler(cmd, user, root):
             return True, None
         else:
             return False, None
+    elif len(data) == 3:
+        field, next_question, param = data
+        print(field, param)
+        return True, _command_handler(cmd=next_question)
 
 
 def flavor(msg):
@@ -341,6 +369,37 @@ def get_user_credential(msg, msg_type):
     return name, chat_id, chat_type
 
 
+def save_document(user, file_path, name):
+
+    fh = open(file_path, "r")
+    if fh:
+        file_content = ContentFile(fh.read())
+        user.cv.save(content=file_content, name=name)
+        fh.close()
+        if fh.closed:
+            os.remove(fh.name)
+        del fh
+        return True
+    else:
+        return False
+
+
+def check_session_confirm(interlocutor):
+    answer = None
+    last_session = TelegramSession.objects.get_last_session(current_user=interlocutor)
+    if last_session:
+        if interlocutor.pk == last_session.tutor.pk and last_session.tutor_confirm is False:
+            print('heasdfre')
+            answer = _command_handler('/t_confirm_session')
+        elif interlocutor.pk == last_session.student.pk and last_session.student_confirm is False:
+            print('here')
+            answer = _command_handler('/s_confirm_session')
+        if answer:
+            return answer
+    else:
+        return None
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class TelegramBotView(View):
     """
@@ -362,15 +421,28 @@ class TelegramBotView(View):
                                                                           name=first_name,
                                                                           chat_type=chat_type)
             replay_markup = None
+            answer = None
+            _param = None
             if message_type == 'chat':
                 if is_created:
                     TelePot.sendMessage(interlocutor.chat_id, 'Hi {username}'.format(username=interlocutor.name))
-                text = message['message']['text']
-                _value = cache.get(str(chat_id))
-                command = text.split()
-                answer = _command_handler(cmd=command[0])
+                message_content = telepot.glance(message['message'], message_type)
+                try:
+                    text = message['message']['text']
+                    _param = cache.get(str(chat_id))
+                    command = text.split()
+                    answer = _command_handler(cmd=command[0])
+                except KeyError:
+                    text = None
                 if cache.get(str(chat_id)):
-                    if update_details(user=interlocutor, details={_value: text}):
+                    if message_content[0] == 'document':
+                        destination = settings.MEDIA_ROOT + '/' + message['message']['document']['file_name']
+                        TelePot.download_file(message['message']['document']['file_id'], dest=destination)
+                        if save_document(user=interlocutor, file_path=destination, name=message['message']['document']['file_name']):
+                            answer = _command_handler(cmd='/_details_updated')
+                        else:
+                            answer = _command_handler(cmd='/_whaaaat?')
+                    elif update_details(user=interlocutor, details={_param: text}):
                         answer = _command_handler(cmd='/_details_updated')
                         cache.delete(str(chat_id))
                 elif answer is None:
@@ -380,13 +452,9 @@ class TelegramBotView(View):
                 TelePot.sendMessage(chat_id, answer[0](), reply_markup=replay_markup)
             elif message_type == 'callback_query':
                 callback = (message['callback_query'])
-                # костыль
                 root = callback['message']['reply_markup']['inline_keyboard'][0][0]['callback_data']
-                # ##
-                callback_answer = None
-                answer = None
-                _param = None
                 data = callback['data']
+                callback_answer = None
                 if data[0] == '*':
                     answer = _command_handler(cmd=data)
                 elif data[0] == '_':
@@ -403,23 +471,28 @@ class TelegramBotView(View):
                 elif data == 'on_top':
                     answer = _command_handler(cmd='*root')
                     root = 'back_to #*root'
-                # elif data in ['connect', 'skip'] or 'connect' in data:
-                #     if 'connect' in data:
-                #         student_chat_id = data.split(" ")[1]
-                #         notice_student(student_chat=student_chat_id, user=user)
-                #         answer = _command_handler(cmd='*connect')
-                #     if data == 'skip':
-                #         answer = _command_handler(cmd='*skip')
-                # elif data in ['confirm', 'reject'] or 'confirm' in data:
-                #     if 'confirm' in data:
-                #         tutor_chat_id = data.split(" ")[1]
-                #         tutor = TelegramUser.objects.get(chat_id=tutor_chat_id)
-                #         answer = _command_handler(cmd='*confirm')
-                #         answer[0] += " {url}".format(url=tutor.appear)
-                #         notice_tutor(tutor=tutor)
-                #         session_updater(user, details={'tutor': tutor, 'is_going': True})
-                #     if data == 'reject':
-                #         answer = _command_handler(cmd='*reject')
+                _answer = check_session_confirm(interlocutor=interlocutor)
+                if _answer is not None:
+                    answer = _answer
+                if data in ['connect', 'skip'] or 'connect' in data:
+                    if 'connect' in data:
+                        student_chat_id = data.split(" ")[1]
+                        notice_student(student_chat=student_chat_id, user=interlocutor)
+                        answer = _command_handler(cmd='*connect')
+                    if data == 'skip':
+                        answer = _command_handler(cmd='*skip')
+                elif data in ['confirm', 'reject'] or 'confirm' in data:
+                    if 'confirm' in data:
+                        tutor_chat_id = data.split(" ")[1]
+                        tutor = TelegramUser.objects.get(chat_id=tutor_chat_id)
+                        tutor.notice = False
+                        tutor.save()
+                        answer = _command_handler(cmd='*confirm')
+                        answer[0] += " {url}".format(url=tutor.appear)
+                        notice_tutor(tutor=tutor)
+                        session_update(interlocutor, details={'tutor': tutor, 'is_going': True})
+                    if data == 'reject':
+                        answer = _command_handler(cmd='*reject')
                 if root == '*placement':
                     _back = 'back_to #*root#{line}'.format(line=data)
                 elif root == 'back_to #*root':

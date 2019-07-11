@@ -291,6 +291,10 @@ def _command_handler(cmd):
     if cmd[0] == '/':
         _blank = COMMANDS
     elif cmd[0] == '*':
+        data = cmd[1:].split('#')
+        if len(data) == 3:
+            field, next_question, param = data
+            cmd = next_question
         _blank = EDIT_MESSAGE_TEXT
     result = _blank.get(cmd.lower(), None)
     return result
@@ -315,10 +319,27 @@ def _param_handler(cmd, user, root):
             return True, None
         else:
             return False, None
-    elif len(data) == 3:
-        field, next_question, param = data
-        print(next_question)
-        return True, _command_handler(cmd=next_question)
+
+
+def _back_handler(root, data):
+    if root == '*placement':
+        _back = 'back_to #*root#{line}'.format(line=data)
+    elif root == 'back_to #*root':
+        _back = None
+    elif len(root) < len(data) or data[0] == '_':
+        _back = root
+    else:
+        data = data[1:].split('#')
+        if len(data) == 3:
+            data = data[1]
+            _back = root + '#{line}'.format(line=data)
+            if len(_back) > 64:  # Telegram API callback_data  1-64 bytes  | 1B = 1 character
+                _back = _back.split('#')
+                del _back[-5]
+                _back = '#'.join(_back)
+        else:
+            _back = root + '#{line}'.format(line=data)
+    return _back
 
 
 def flavor(msg):
@@ -495,14 +516,7 @@ class TelegramBotView(View):
                         session_update(interlocutor, details={'tutor': tutor, 'is_going': True})
                     if data == 'reject':
                         answer = _command_handler(cmd='*reject')
-                if root == '*placement':
-                    _back = 'back_to #*root#{line}'.format(line=data)
-                elif root == 'back_to #*root':
-                    _back = None
-                elif len(root) < len(data) or data[0] == '_':
-                    _back = root
-                else:
-                    _back = root + '#{line}'.format(line=data)
+                _back = _back_handler(root=root, data=data)
                 if answer:
                     try:
                         if isinstance(answer[2], tuple):
@@ -518,6 +532,7 @@ class TelegramBotView(View):
                             replay_markup = make_inline_keyboard(button_text_data=answer[1], back=_back)
                     if isinstance(answer[0], str):
                         # send a message to user (above inline buttons)
+                        print(answer[0], replay_markup)
                         TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),
                                                 answer[0], reply_markup=replay_markup)
                     elif replay_markup:

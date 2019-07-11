@@ -64,7 +64,7 @@ def add_questions():
         quiz = json.load(read_file)
     #editing each question from quiz dictionary
     for question in quiz['questions'].items():
-        edited_questions['*q_{i}'.format(i=question[0])] = make_a_query(question)
+        edited_questions['*q{i}'.format(i=question[0])] = make_a_query(question)
 
     return edited_questions
 

@@ -1,6 +1,7 @@
 import json
 import os
 import pprint
+import types
 
 import telepot
 from django.conf import settings
@@ -66,6 +67,11 @@ def session_get(details):
         return False
 
 
+def session_history(user):
+    return TelegramSession.objects.get_history(current_user=user)
+
+
+
 
 def session_update(user, details):
     """
@@ -101,6 +107,18 @@ def _display_tutor_notice(session):
 def _display_student_notice(user_info):
     return render_to_string('tplatform/student_notice.md'). \
         format(name=user_info.name, language=user_info.native_language)
+
+
+def _display_history_session(user):
+    history_queryset = session_history(user)
+    history_list = str()
+    for history in history_queryset:
+        history_list += "ID:{pk} | Rate:{rate} | Tutor:{tutor}\n".format(
+            pk=history.pk,
+            rate=history.rate,
+            tutor=history.tutor)
+    return history_list
+
 
 
 def _display_session_confirm():
@@ -208,7 +226,7 @@ COMMANDS = {
                                                 ('Canceled', '_s_session_canceled')]),
             '/t_confirm_session':       (_display_session_confirm, [('Done', '_session_done'),
                                                 ('Canceled', '_t_session_canceled')]),
-
+            '/history_session':      (_display_history_session, None),
             # Command which user are not allowed to be found
             '/_details_updated':                      (_display_details_updated, None),
             '/_whaaaat?':                            (_display_sorry, None),
@@ -252,7 +270,7 @@ EDIT_MESSAGE_TEXT = {
 
             '*s_session':               (None, None, ([('Initialize', '_init_session'),
                                                         ('Cancel', '_cancel_session'),
-                                                       ('History', '_history_session')],
+                                                       ('History', '/history_session')],
                                                         {'session': ('is_active', True)})),
             '*teach_for_us':            (None, None, ([('Apply', '_apply'),
                                                       ('Notification', '*notification'),
@@ -302,31 +320,31 @@ def _command_handler(cmd):
     if cmd[0] == '/':
         _blank = COMMANDS
     elif cmd[0] == '*':
-        data = cmd[1:].split('#')
+        data = cmd.split('#')
         if len(data) == 3:
             field, next_question, param = data
             cmd = next_question
         _blank = EDIT_MESSAGE_TEXT
     result = _blank.get(cmd.lower(), None)
+
     return result
 
 
 def _param_handler(cmd, user):
-    data = cmd[1:].split('#')
+    data = cmd.split('#')
     answer = None
     if len(data) == 1:
         func, param = INTERNAL_COMMANDS.get(cmd.lower(), None)
         is_updated = func(user, param)
-        print(is_updated)
         if is_updated:
             answer = _command_handler(cmd='*root')
         return is_updated, answer
     elif len(data) == 2:
         field, param = data
         if param == 'await':
-            cache.set('{chat_id}'.format(chat_id=user.chat_id), '{field}'.format(field=field[0:]), 90)
+            cache.set('{chat_id}'.format(chat_id=user.chat_id), '{field}'.format(field=field[1:]), 90)
             return True, None
-        elif update_details(user=user, details={field: param}):
+        elif update_details(user=user, details={field[1:]: param}):
             return True, None
         else:
             return False, None
@@ -340,7 +358,7 @@ def _back_handler(root, data):
     elif len(root) < len(data) or data[0] == '_':
         _back = root
     else:
-        data = data[1:].split('#')
+        data = data.split('#')
         if len(data) == 3:
             data = data[1]
             _back = root + '#{line}'.format(line=data)
@@ -349,6 +367,7 @@ def _back_handler(root, data):
                 del _back[-5]
                 _back = '#'.join(_back)
         else:
+            data = ''.join(data)
             _back = root + '#{line}'.format(line=data)
     return _back
 
@@ -489,8 +508,9 @@ class TelegramBotView(View):
                 root = callback['message']['reply_markup']['inline_keyboard'][0][0]['callback_data']
                 data = callback['data']
                 callback_answer = None
-                if data[0] == '*':
+                if data[0] == '*' or data[0] == '/':
                     answer = _command_handler(cmd=data)
+                    print(answer)
                 elif data[0] == '_':
                     result, answer = _param_handler(cmd=data, user=interlocutor)
                     if result:
@@ -542,11 +562,14 @@ class TelegramBotView(View):
                             replay_markup = make_inline_keyboard(button_text_data=answer[1], back=_back)
                     if isinstance(answer[0], str):
                         # send a message to user (above inline buttons)
-                        print(answer[0], replay_markup)
                         TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),
                                                 answer[0], reply_markup=replay_markup)
+                    elif isinstance(answer[0], types.FunctionType):
+
+                        TelePot.sendMessage(chat_id, text=answer[0](interlocutor))
                     elif replay_markup:
                         # send a key board to user
+                        print('------')
                         TelePot.editMessageReplyMarkup(telepot.message_identifier(msg=callback['message']),
                                                        reply_markup=replay_markup)
                 if callback_answer:

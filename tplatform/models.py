@@ -56,4 +56,4 @@ class TelegramSession(models.Model):
         verbose_name_plural = 'TelegramSessions'
 
     def __str__(self):
-        return '{} {}'.format(self.student.chat_id, self.tutor.chat_id)
+        return '{}'.format(self.student.chat_id)

@@ -30,23 +30,23 @@ def check_answer(answer, right):
 def make_a_query(question):
     query = [question[1]["question"],
                  [(question[1]["A"],
-                   '*q_{current}#*q_{next}#{data}'.format(current=question[0],
+                   '*q{current}#*q{next}#{data}'.format(current=question[0],
                                                                         next=int(question[0]) + 1,
                                                                         data=check_answer(answer=question[1]["A"],
                                                                                           right=question[1]["right"]))),
                   (question[1]["B"],
-                   '*q_{current}#*q_{next}#{data}'.format(current=question[0],
+                   '*q{current}#*q{next}#{data}'.format(current=question[0],
                                                                         next=int(question[0]) + 1,
                                                                         data=check_answer(answer=question[1]["B"],
                                                                                           right=question[1]["right"]))),
                   (question[1]["C"],
-                   '*q_{current}#*q_{next}#{data}'.format(current=question[0],
+                   '*q{current}#*q{next}#{data}'.format(current=question[0],
                                                                         next=int(question[0]) + 1,
                                                                         data=check_answer(answer=question[1]["C"],
                                                                                           right=question[1]["right"])))]]
     if len(question[1]) == 6:
         query[1].append((question[1]["D"],
-                   '*q_{current}#*q_{next}#{data}'.format(current=question[0],
+                   '*q{current}#*q{next}#{data}'.format(current=question[0],
                                                                         next=int(question[0]) + 1,
                                                                         data=check_answer(answer=question[1]["D"],
                                                                                           right=question[1]["right"]))))
@@ -57,7 +57,7 @@ def add_questions():
     """Returns edited questions for a new format"""
     edited_questions = {'*placement' : (None, [('Start Test', '*start_test'),
                                            ('Check result', '*check_result')]),
-                        '*start_test' : (HELLO_STRING, [('I am ready!', '*q_1')]),}
+                        '*start_test' : (HELLO_STRING, [('I am ready!', '*q1')]),}
 
     # dictionary with data for quiz from JSON file
     with open(os.path.dirname(__file__)+"/quiz.json", "r") as read_file:

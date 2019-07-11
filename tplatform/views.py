@@ -13,6 +13,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
 from telepot.namedtuple import InlineKeyboardButton, InlineKeyboardMarkup
+from django.core.mail import send_mail
 
 from .models import TelegramUser, TelegramSession
 from .utilit import add_questions
@@ -20,9 +21,17 @@ from .utilit import add_questions
 TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
 
 
-def apply():
-    """send email when tutor is applied"""
-    pass
+def apply(user, param=None):
+    """send email and a message when tutor is applied"""
+    if user.cv is not None and user.phone is not None and user.appear is not None:
+        subject = 'New Tutor'
+        message = 'Hi Admin, {name} applied as a tutor. Chat ID - {chat_id}'.format(name=user.name, chat_id=user.chat_id)
+        email_from = settings.EMAIL_HOST_USER
+        recipient_list = [settings.EMAIL_FOR_NOTIFICATION]
+        send_mail(subject, message, email_from, recipient_list)
+        if TelePot.sendMessage(chat_id=settings.TELEGRAM_ADMIN_CHAT_ID, text=message):
+            return True
+    return False
 
 
 def update_details(user, details):
@@ -67,6 +76,8 @@ def session_update(user, details):
     try:
         if TelegramSession.objects.filter(student=user, is_active=True).update(**details):
             return True
+        elif TelegramSession.objects.filter(tutor=user, tutor_confirm=False).update(**details):
+            return True
         else:
             return False
     except ValidationError:
@@ -90,6 +101,7 @@ def _display_tutor_notice(session):
 def _display_student_notice(user_info):
     return render_to_string('tplatform/student_notice.md'). \
         format(name=user_info.name, language=user_info.native_language)
+
 
 def _display_session_confirm():
     return "Please confirm last session"
@@ -222,7 +234,7 @@ EDIT_MESSAGE_TEXT = {
             '*connect':              ("You have been connect to session.\n"
                                       "Please wait while the student confirms session with you.", None),
             '*skip':                 ("Please wait next session", None),
-            '*confirm':              ["To start session follow the link ", None],
+            # '*confirm':              ["To start session follow the link ", None],
             '*reject':               ("Please wait next tutor", None),
 
             '*root':                    (None, [('Placement', '*placement'),
@@ -266,16 +278,15 @@ INTERNAL_COMMANDS = {
             '_notice_off':              (update_details, {'notice': False}),
             '_apply':                   (apply, None),
             '_session_excellent':       (session_update, {'student_confirm': True, 'rate': 5,
-                                                          'is_going': False}),
+                                                          'is_going': False, 'is_active': False}),
             '_session_nice':            (session_update, {'student_confirm': True, 'rate': 4,
-                                                          'is_going': False}),
+                                                          'is_going': False, 'is_active': False}),
             '_session_terrible':        (session_update, {'student_confirm': True, 'rate': 3,
-                                                          'is_going': False}),
-            '_session_done':            (session_update, {'tutor_confirm': True, 'is_active': False}),
-            '_t_session_canceled':      (session_update, {'tutor_confirm': True, 'is_active': False,
-                                                          'rate': 0}),
+                                                          'is_going': False, 'is_active': False}),
+            '_session_done':            (session_update, {'tutor_confirm': True}),
+            '_t_session_canceled':      (session_update, {'tutor_confirm': True, 'rate': 0}),
             '_s_session_canceled':      (session_update, {'tutor_confirm': True, 'is_going': False,
-                                                          'rate': 0})
+                                                          'rate': 0, 'is_active': False})
 }
 
 
@@ -300,15 +311,15 @@ def _command_handler(cmd):
     return result
 
 
-def _param_handler(cmd, user, root):
+def _param_handler(cmd, user):
     data = cmd[1:].split('#')
     answer = None
     if len(data) == 1:
         func, param = INTERNAL_COMMANDS.get(cmd.lower(), None)
         is_updated = func(user, param)
+        print(is_updated)
         if is_updated:
-            current_folder = root.split('#')
-            answer = _command_handler(cmd=current_folder[-1])
+            answer = _command_handler(cmd='*root')
         return is_updated, answer
     elif len(data) == 2:
         field, param = data
@@ -481,7 +492,7 @@ class TelegramBotView(View):
                 if data[0] == '*':
                     answer = _command_handler(cmd=data)
                 elif data[0] == '_':
-                    result, answer = _param_handler(cmd=data, user=interlocutor, root=root)
+                    result, answer = _param_handler(cmd=data, user=interlocutor)
                     if result:
                         callback_answer = 'Success'
                     else:
@@ -510,8 +521,7 @@ class TelegramBotView(View):
                         tutor = TelegramUser.objects.get(chat_id=tutor_chat_id)
                         tutor.notice = False
                         tutor.save()
-                        answer = _command_handler(cmd='*confirm')
-                        answer[0] += " {url}".format(url=tutor.appear)
+                        answer = "To start session follow the link {url}".format(url=tutor.appear)
                         notice_tutor(tutor=tutor)
                         session_update(interlocutor, details={'tutor': tutor, 'is_going': True})
                     if data == 'reject':

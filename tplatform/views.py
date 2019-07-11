@@ -1,19 +1,21 @@
 import json
-import telepot
-from django.core.cache import cache
-from telepot.namedtuple import InlineKeyboardButton, InlineKeyboardMarkup
-from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse
-from django.views.generic import View
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.conf import settings
-from .models import TelegramUser, TelegramSession
-from django.template.loader import render_to_string
-from django.core.exceptions import ValidationError
-from django.core.files.base import ContentFile
 import os
 import pprint
 
+import telepot
+from django.conf import settings
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
+from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse
+from django.template.loader import render_to_string
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from django.views.generic import View
+from telepot.namedtuple import InlineKeyboardButton, InlineKeyboardMarkup
+
+from .models import TelegramUser, TelegramSession
+from .utilit import add_questions
 
 TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
 
@@ -253,6 +255,8 @@ EDIT_MESSAGE_TEXT = {
                                                 ('CV', '_cv#await'),
                                                 ('Native Language', '*native_language')]),
 }
+NEW_C = add_questions()
+EDIT_MESSAGE_TEXT = {**EDIT_MESSAGE_TEXT, **NEW_C}
 
 
 INTERNAL_COMMANDS = {
@@ -313,6 +317,7 @@ def _param_handler(cmd, user, root):
             return False, None
     elif len(data) == 3:
         field, next_question, param = data
+        print(next_question)
         return True, _command_handler(cmd=next_question)
 
 
@@ -417,14 +422,15 @@ class TelegramBotView(View):
             interlocutor, is_created = TelegramUser.objects.get_or_create(chat_id=chat_id,
                                                                           name=first_name,
                                                                           chat_type=chat_type)
+            if is_created:
+                TelePot.sendMessage(interlocutor.chat_id, 'Hi {username}'.format(username=interlocutor.name))
             replay_markup = None
             answer = None
-            _param = None
+
             if message_type == 'chat':
-                if is_created:
-                    TelePot.sendMessage(interlocutor.chat_id, 'Hi {username}'.format(username=interlocutor.name))
-                message_content = telepot.glance(message['message'], message_type)
+                message_content = telepot.glance(message['message'], message_type)  # chat/document/image etc
                 try:
+                    _param = None
                     text = message['message']['text']
                     _param = cache.get(str(chat_id))
                     command = text.split()
@@ -441,14 +447,14 @@ class TelegramBotView(View):
                             answer = _command_handler(cmd='/_whaaaat?')
                     elif update_details(user=interlocutor, details={_param: text}):
                         answer = _command_handler(cmd='/_details_updated')
-                        cache.delete(str(chat_id))
+                    cache.delete(str(chat_id))
                 elif answer is None:
                     answer = _command_handler(cmd='/_whaaaat?')
                 elif answer[1]:
                     replay_markup = make_inline_keyboard(button_text_data=answer[1], back=None)
                 TelePot.sendMessage(chat_id, answer[0](), reply_markup=replay_markup)
             elif message_type == 'callback_query':
-                callback = (message['callback_query'])
+                callback = message['callback_query']
                 root = callback['message']['reply_markup']['inline_keyboard'][0][0]['callback_data']
                 data = callback['data']
                 callback_answer = None
@@ -501,6 +507,7 @@ class TelegramBotView(View):
                 if answer:
                     try:
                         if isinstance(answer[2], tuple):
+                            # Only if it needs to replace a button
                             buttons = replaceable_button(buttons=answer[2][0], user=TelegramUser.objects.get_or_create(
                                 chat_id=chat_id,
                                 name=first_name,
@@ -508,14 +515,18 @@ class TelegramBotView(View):
                             replay_markup = make_inline_keyboard(button_text_data=buttons, back=_back)
                     except IndexError:
                         if isinstance(answer[1], list):
+                            # return just inline key board
                             replay_markup = make_inline_keyboard(button_text_data=answer[1], back=_back)
                     if isinstance(answer[0], str):
+                        # send a message to user (above inline buttons)
                         TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),
                                                 answer[0], reply_markup=replay_markup)
                     elif replay_markup:
+                        # send a key board to user
                         TelePot.editMessageReplyMarkup(telepot.message_identifier(msg=callback['message']),
                                                        reply_markup=replay_markup)
                 if callback_answer:
+                    # send an inline message
                     TelePot.answerCallbackQuery(callback['id'], text=callback_answer)
 
             return JsonResponse({}, status=200)

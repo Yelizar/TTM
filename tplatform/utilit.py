@@ -1,6 +1,7 @@
 """This script for editing quiz questions"""
 
 import json
+import os
 import pprint
 
 HELLO_STRING = """Hello! I am a bot designed to help you find out at which level of English you are.
@@ -53,22 +54,19 @@ def make_a_query(question):
     return tuple(query)
 
 
-def add_questions ():
+def add_questions():
     """Returns edited questions for a new format"""
     edited_questions = {'*placement' : (None, [('Start Test', '*start_test'),
                                            ('Check result', '*check_result')]),
                         '*start_test' : (HELLO_STRING, [('I am ready!', '*question_1')]),}
 
     # dictionary with data for quiz from JSON file
-    with open("quiz.json", "r") as read_file:
+    with open(os.path.dirname(__file__)+"/quiz.json", "r") as read_file:
         quiz = json.load(read_file)
-    
     #editing each question from quiz dictionary
     for question in quiz['questions'].items():
         edited_questions['*question_{i}'.format(i=question[0])] = make_a_query(question)
-    pprint.pprint(edited_questions)
 
     return edited_questions
 
-add_questions()
 

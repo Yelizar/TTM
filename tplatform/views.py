@@ -426,11 +426,10 @@ class TelegramBotView(View):
                 TelePot.sendMessage(interlocutor.chat_id, 'Hi {username}'.format(username=interlocutor.name))
             replay_markup = None
             answer = None
-
+            _param = None
             if message_type == 'chat':
                 message_content = telepot.glance(message['message'], message_type)  # chat/document/image etc
                 try:
-                    _param = None
                     text = message['message']['text']
                     _param = cache.get(str(chat_id))
                     command = text.split()

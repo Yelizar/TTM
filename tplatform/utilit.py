@@ -2,7 +2,6 @@
 
 import json
 import os
-import pprint
 
 HELLO_STRING = """Hello! I am a bot designed to help you find out at which level of English you are.
 

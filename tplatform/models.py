@@ -1,5 +1,5 @@
 from django.db import models
-from .managers import *
+from .managers import TelegramSessionManager
 
 # Create your models here.
 

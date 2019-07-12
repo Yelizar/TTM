@@ -8,13 +8,13 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
+from django.core.mail import send_mail
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse
 from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
 from telepot.namedtuple import InlineKeyboardButton, InlineKeyboardMarkup
-from django.core.mail import send_mail
 
 from .models import TelegramUser, TelegramSession
 from .utilit import add_questions
@@ -22,7 +22,7 @@ from .utilit import add_questions
 TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
 
 
-def apply(user, param=None):
+def apply(user):
     """send email and a message when tutor is applied"""
     if user.cv is not None and user.phone is not None and user.appear is not None:
         subject = 'New Tutor'
@@ -71,8 +71,6 @@ def session_history(user):
     return TelegramSession.objects.get_history(current_user=user)
 
 
-
-
 def session_update(user, details):
     """
     :param user: class TelegramUser()
@@ -90,11 +88,11 @@ def session_update(user, details):
         return False
 
 
-def _display_help(param=None):
+def _display_help():
     return render_to_string('tplatform/help.md')
 
 
-def _display_sorry(param=None):
+def _display_sorry():
     return "Sorry, I'm still learning, so I don't understand you \n" \
                              "Please check available commands /help"
 
@@ -120,12 +118,11 @@ def _display_history_session(user):
     return history_list
 
 
-
 def _display_session_confirm():
     return "Please confirm last session"
 
 
-def _display_details_updated(param=None):
+def _display_details_updated():
     return "Details Updated"
 
 
@@ -308,7 +305,7 @@ INTERNAL_COMMANDS = {
 }
 
 
-def _command_handler(cmd):
+def _command_handler(cmd, user=None):
     """
     :param cmd: str. It's a command(/) or internal command to change message(*) or text message (from user)
     :return: tuple or None . It contains 3 params.
@@ -323,6 +320,7 @@ def _command_handler(cmd):
         data = cmd.split('#')
         if len(data) == 3:
             field, next_question, param = data
+            # НАТАША ТВОЯ ФУНКЦИЯ НАЧИНАЕТСЯ ТУТ, ПЕРЕДАВАЙ В НЕЕ (field, param, user)
             cmd = next_question
         _blank = EDIT_MESSAGE_TEXT
     result = _blank.get(cmd.lower(), None)
@@ -425,7 +423,6 @@ def get_user_credential(msg, msg_type):
 
 
 def save_document(user, file_path, name):
-
     fh = open(file_path, "r")
     if fh:
         file_content = ContentFile(fh.read())
@@ -464,12 +461,13 @@ class TelegramBotView(View):
             return HttpResponseForbidden('Invalid token')
         request_body = request.body.decode('utf-8')
         try:
-            message = json.loads(request_body)
-            message_type = flavor(message)
+            message_body = json.loads(request_body)
+            message_type = flavor(message_body)
 
-            pprint.pprint(message)  # Print to check request
+            pprint.pprint(message_body)  # Print to check request
 
-            first_name, chat_id, chat_type = get_user_credential(msg=message, msg_type=message_type)
+            first_name, chat_id, chat_type = get_user_credential(msg=message_body,
+                                                                 msg_type=message_type)
             interlocutor, is_created = TelegramUser.objects.get_or_create(chat_id=chat_id,
                                                                           name=first_name,
                                                                           chat_type=chat_type)
@@ -477,25 +475,26 @@ class TelegramBotView(View):
                 TelePot.sendMessage(interlocutor.chat_id, 'Hi {username}'.format(username=interlocutor.name))
             replay_markup = None
             answer = None
-            _param = None
+            param = None
             if message_type == 'chat':
-                message_content = telepot.glance(message['message'], message_type)  # chat/document/image etc
+                message = message_body['message']
+                message_content = telepot.glance(message, message_type)  # chat/document/image etc
                 try:
-                    text = message['message']['text']
-                    _param = cache.get(str(chat_id))
+                    text = message['text']
+                    param = cache.get(str(chat_id))
                     command = text.split()
                     answer = _command_handler(cmd=command[0])
                 except KeyError:
                     text = None
-                if cache.get(str(chat_id)):
+                if param:
                     if message_content[0] == 'document':
-                        destination = settings.MEDIA_ROOT + '/' + message['message']['document']['file_name']
-                        TelePot.download_file(message['message']['document']['file_id'], dest=destination)
-                        if save_document(user=interlocutor, file_path=destination, name=message['message']['document']['file_name']):
+                        destination = settings.MEDIA_ROOT + '/' + message['document']['file_name']
+                        TelePot.download_file(message['document']['file_id'], dest=destination)
+                        if save_document(user=interlocutor, file_path=destination, name=message['document']['file_name']):
                             answer = _command_handler(cmd='/_details_updated')
                         else:
                             answer = _command_handler(cmd='/_whaaaat?')
-                    elif update_details(user=interlocutor, details={_param: text}):
+                    elif update_details(user=interlocutor, details={param: text}):
                         answer = _command_handler(cmd='/_details_updated')
                     cache.delete(str(chat_id))
                 elif answer is None:
@@ -504,13 +503,15 @@ class TelegramBotView(View):
                     replay_markup = make_inline_keyboard(button_text_data=answer[1], back=None)
                 TelePot.sendMessage(chat_id, answer[0](), reply_markup=replay_markup)
             elif message_type == 'callback_query':
-                callback = message['callback_query']
+                callback = message_body['callback_query']
                 root = callback['message']['reply_markup']['inline_keyboard'][0][0]['callback_data']
                 data = callback['data']
                 callback_answer = None
                 if data[0] == '*' or data[0] == '/':
-                    answer = _command_handler(cmd=data)
-                    print(answer)
+                    if data[1] == 'q':
+                        answer = _command_handler(cmd=data, user=interlocutor)
+                    else:
+                        answer = _command_handler(cmd=data)
                 elif data[0] == '_':
                     result, answer = _param_handler(cmd=data, user=interlocutor)
                     if result:
@@ -565,11 +566,10 @@ class TelegramBotView(View):
                         TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),
                                                 answer[0], reply_markup=replay_markup)
                     elif isinstance(answer[0], types.FunctionType):
-
+                        # send a message below inline buttons
                         TelePot.sendMessage(chat_id, text=answer[0](interlocutor))
                     elif replay_markup:
                         # send a key board to user
-                        print('------')
                         TelePot.editMessageReplyMarkup(telepot.message_identifier(msg=callback['message']),
                                                        reply_markup=replay_markup)
                 if callback_answer:

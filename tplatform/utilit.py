@@ -55,9 +55,9 @@ def make_a_query(question):
 
 def add_questions():
     """Returns edited questions for a new format"""
-    edited_questions = {'*placement' : (None, [('Start Test', '*start_test'),
+    edited_questions = {'*placement': (None, [('Start Test', '*start_test'),
                                            ('Check result', '*check_result')]),
-                        '*start_test' : (HELLO_STRING, [('I am ready!', '*q1')]),}
+                        '*start_test': (HELLO_STRING, [('I am ready!', '*q1')])}
 
     # dictionary with data for quiz from JSON file
     with open(os.path.dirname(__file__)+"/quiz.json", "r") as read_file:

@@ -2,7 +2,9 @@
 
 Nice to see you with us
 
-Available commands:
+Placment: Test
+TalkToMe: Student
+TeachForUs: Tutor
 /help
  
 

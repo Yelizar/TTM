@@ -28,7 +28,7 @@ def check_answer(answer, right):
 
 
 def make_a_query(question):
-    query = [question[1]["question"],
+    query = '{id}. {question}'.format(id=question[0], question=question[1]["question"]),
                  [(question[1]["A"],
                    '*q{current}#*q{next}#{data}'.format(current=question[0],
                                                                         next=int(question[0]) + 1,
@@ -67,5 +67,3 @@ def add_questions():
         edited_questions['*q{i}'.format(i=question[0])] = make_a_query(question)
 
     return edited_questions
-
-

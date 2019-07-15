@@ -304,6 +304,52 @@ INTERNAL_COMMANDS = {
                                                           'rate': 0, 'is_active': False})
 }
 
+# dictionary for saving user's test results 
+# {user1_question1 : 1}
+# a record with 'user_id_00' matches with user result for a test 
+TEST_RESULTS = {}
+
+def user_level(self, score):
+        """Checking user level"""
+        level = ""
+        if 0 <= score <= 15:
+            level = "Starter"
+        if 15 < score <= 35:
+            level = "Elementary"
+        if 35 < score <= 55:
+            level = "Pre-Intermediate"
+        if 55 < score <= 75:
+            level = "Intermediate"
+        if 75 < score <= 95:
+            level = "Upper Intermediate"
+        if score > 95:
+            level = "Advanced"
+        return level
+
+def result_counting(question_id, answer_id, user):
+    # before first question result should be 0
+    # else result from dict for current user
+    if question_id == 1:
+        result = 0
+    else:
+        result = TEST_RESULTS['{user_id}_00'.format(user_id = user.chat_id)]
+
+    # writing current question result and test reselt for the user
+    TEST_RESULTS['{user_id}_{question_id}'.format(user_id = user.chat_id,
+                                                  question_id = question_id)] = answer_id
+    TEST_RESULTS['{user_id}_00'.format(user_id = user.chat_id)] = result + answer_id
+    result = TEST_RESULTS['{user_id}_00'.format(user_id = user.chat_id)]
+
+    # reading json dict with questions
+    with open(os.path.dirname(__file__)+"/quiz.json", "r") as read_file:
+        quiz = json.load(read_file)
+
+    # after checking last answer return info with test result
+    if question_id == str(len(quiz)-1):
+        level = user_level(TEST_RESULTS['{user_id}_00'.format(user_id = user.chat_id)])
+        return 'Your score is: {result} / {question_id}\nYour level is {level}'.format(result = result, question_id = question_id, level = level)
+    else:
+        return 0
 
 def _command_handler(cmd, user=None):
     """
@@ -321,6 +367,8 @@ def _command_handler(cmd, user=None):
         if len(data) == 3:
             field, next_question, param = data
             # НАТАША ТВОЯ ФУНКЦИЯ НАЧИНАЕТСЯ ТУТ, ПЕРЕДАВАЙ В НЕЕ (field, param, user)
+            result_counting(questionId=field, answerId=param, user=user)
+
             cmd = next_question
         _blank = EDIT_MESSAGE_TEXT
     result = _blank.get(cmd.lower(), None)

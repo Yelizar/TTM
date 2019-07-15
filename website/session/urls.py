@@ -6,9 +6,10 @@ app_name = 'session'
 
 urlpatterns = [
 
-    path('profile/<int:pk>', views.ProfileDetailView.as_view(), name='profile'),
-    path('profile/update-tutor-details/<int:pk>', views.TutorDetailsUpdateView.as_view(), name='update-tutor-details'),
-    path('search/', views.search_view, name='search'),
-
-
+    path('profile/<int:pk>', views.ProfileDetailsView.as_view(), name='profile'),
+    path('profile/update-t-details/<int:pk>', views.TutorDetailsUpdateView.as_view(), name='update-tutor-details'),
+    # path('profile/update-s-details/<int:pk>', views.StudentDetailsUpdateView.as_view(), name='update-student-details'),
+    path('session-initialization/<session_name>/', views.SessionInitialization.as_view(), name='session-initialization'),
+    path('profile/add_com_number/',  views.CommunicationMethodNumberCreateView.as_view(), name='add_com_number'),
+    path('session-completion/<session_id>', views.SessionCompletion.as_view(), name='session-completion')
 ]

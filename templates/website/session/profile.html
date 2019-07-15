@@ -1,50 +1,115 @@
 {% extends "website/base.html" %}
+{% load static %}
+{% load notifications_tags %}
 {% block titel %} Profile {% endblock %}
 {% block content %}
     <h4> Profile page </h4>
+    {% live_notify_badge %}
+    {% live_notify_list %}
     {% if user.is_authenticated %}
+        <h5>
+            {% if object.online %}Online
+            {% else %} Offline | {{ object.last_seen|timesince }} ago{% endif %}
+        </h5>
 
-        <div style="float: left; width: 50%;">
+        <div style="float: left; width: 50%; height: 500px">
             <h5>General Profile details</h5>
-            <p>Username: {{ user.username }}</p>
-            <p>First Name: {{ user.first_name }}</p>
-            <p>Last Name: {{ user.last_name }}</p>
-            <p>Email: {{ user.email }}</p>
-            <p>Role: {{ user.role }}</p>
-            <p>Account created: {{ user.date_joined }}</p>
-            <p>Last Login: {{ user.last_login }}</p>
+            <p>Username: {{ object.username }}</p>
+            <p>First Name: {{ object.first_name }}</p>
+            <p>Last Name: {{ object.last_name }}</p>
+            <p>Email: {{ object.email }}</p>
+            <p>Role: {{ object.role }}</p>
+            <p>Account created: {{ object.date_joined }}</p>
+            <p>Last Login: {{ object.last_login }}</p>
             <p>Time now: {{ now }}</p>
         </div>
-        {% if user.role == 'Student' %}
-            <p>Find tutors online</p>
-            <button class="primaryAction" type="submit"><a href="{% url 'session:search' %}">Find</a></button>
-            <br>
-        {% elif user.role == 'Tutor' %}
-
-            <div style="float: left;  width: 50%">
-                <h5>Tutor details</h5>
-                <p>DoB: {{ user.tutordetails.dob }}</p>
-                <p>CV: {{ user.tutordetails.cv_name }}</p>
-                <p>Resume: {{ user.tutordetails.short_resume }}</p>
-                <p>Phone: {{ user.tutordetails.phone_number }}</p>
+        {% if request.user.id == object.id %}
+            <div>
+                <h5>Balance:</h5>{{ object.sessioncoins.coins }}
             </div>
-            <button class="primaryAction" type="submit"><a href="{% url 'session:update-tutor-details' user.tutordetails.user_id %}">Edit</a></button>
+            {% if object.role == 'Student' %}
+{#                <div style="float: left;  width: 50%">#}
+{#                    <h5>Student details</h5>#}
+{#                    <p>Languages: {{ object.studentdetails.languages }}</p>#}
+{#                    <p>Communication Methods: {% for method in object.communicationmethodnumber_set.all %}#}
+{#                        | {{ method }} |#}
+{#                    {% endfor %}</p>#}
+{#                    <button class="primaryAction" type="submit"><a#}
+{#                            href="{% url 'session:update-student-details' object.studentdetails.user_id %}">Edit</a>#}
+{#                    </button>#}
+{#                </div>#}
+                {% if request.user.id == object.id %}
+                    <div>
+                    ---------------------------------------------------------------------------------
+                    <h5>Press button to find tutors</h5>
+                    <input id="session-name-input" type="hidden" value="{{ object.username }}"/><br/>
+                    <input id="session-name-submit" type="button" value="Session Initialization"/>
+                    </div>
+                {% endif %}
+            {% elif object.role == 'Tutor' %}
 
+                <div style="float: left;  width: 50%">
+                    <h5>Tutor details</h5>
+                    <p>Languages: {{ object.tutordetails.languages }}</p>
+                    <p>{% if object.communicationmethodnumber_set.all %}</p>
+                    <p>{% for method in object.communicationmethodnumber_set.all %}
+                         {{ method.com_method }} :  {{ method.number }}
+                    {% endfor %}</p>
+                        {% else %}
+                        <button class="primaryAction" type="submit"><a
+                        href="{% url 'session:add_com_number' %}">Add Number</a></button>
+                        {% endif %}
+                    <p>DoB: {{ object.tutordetails.dob }}</p>
+                    <p>CV: {{ object.tutordetails.cv_name }}</p>
+                    <p>Resume: {{ object.tutordetails.short_resume }}</p>
+                    <p>Phone: {{ object.tutordetails.phone_number }}</p>
+                </div>
+                <button class="primaryAction" type="submit"><a
+                        href="{% url 'session:update-tutor-details' object.tutordetails.user_id %}">Edit</a></button>
+                {% if object.tutordetails.is_active %}
+                    <p>Dear Tutor, yours details has been approved by manager.<br>
+                        Now you are able to change your status.</p>
+                    {% if object.tutorstatus.is_active %}
+                        Mode: Waiting a session
+                    {% else %}
+                        Mode: Do not disturb
+                    {% endif %}
+                    <form class="access-form" method="POST" action="">
+                        {% csrf_token %}
+                        <input type="hidden" name="tutor_status"/>
+                        <button class="primaryAction" type="submit">Change status</button>
+                    </form>
+                {% else %}
+                    <p>Dear Tutor, yours details still hasn't been approved.<br>
+                        You'll receive an email when our manager finishes your case.</p>
+                {% endif %}
+            {% endif %}
         {% endif %}
     {% else %}
-        You are not authorized. Please log in or register on the website
-        <button class="primaryAction" type="submit"><a href="{% url 'access:registration' %}">Registration</a></button>
-        OR
-        <button class="primaryAction" type="submit"><a href="{% url 'access:login' %}">Login</a></button>
-        <h1>OAuth</h1>
-        <a class="btn btn-primary" href="{% url 'access:social:begin' 'google-oauth2' %}">
-            Login with Gmail
-        </a>
+        <div style="float: left; width: 100%; ">
+            You are not authorized. Please log in or register on the website
+            <button class="primaryAction" type="submit"><a href="{% url 'access:registration' %}">Registration</a>
+            </button>
+            OR
+            <button class="primaryAction" type="submit"><a href="{% url 'access:login' %}">Login</a></button>
+            <h1>OAuth</h1>
+            <a class="btn btn-primary" href="{% url 'access:social:begin' 'google-oauth2' %}">
+                Login with Gmail
+            </a>
+        </div>
     {% endif %}
-    <div style="float: left; width: 100%; margin-top: 150px">
+    <div style="float: left; width: 100%; margin-top: 50px">
         <button class="primaryAction" type="submit"><a href="{% url 'access:home' %}"> Home </a></button>
         <button class="primaryAction" type="submit"><a href="{% url 'access:logout' %}"> Logout </a></button>
     </div>
+    <script>
+        document.querySelector('#session-name-submit').onclick = function (e) {
+            var sessionName = document.querySelector('#session-name-input').value;
+            window.location.pathname = 'session-initialization/' + sessionName + '/';
+        };
+    </script>
+    <script src="{% static 'notifications/notify.js' %}" type="text/javascript"></script>
+{% register_notify_callbacks callbacks='fill_notification_list,fill_notification_badge' %}
 
 
 {% endblock %}

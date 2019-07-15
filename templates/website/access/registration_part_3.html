@@ -1,0 +1,22 @@
+{% extends "website/base.html" %}
+{% block titel %} Sign Up 3{% endblock %}
+
+{% block content %}
+    {% if user.is_authenticated %}
+            <p>Nice to meet you.</p>
+            <p>It's last step of your registration</p>
+            <p>Who are you?</p>
+        <div>
+            You can continue the registration next time.
+            <button class="primaryAction" type="submit"><a  href="{% url 'access:logout' %}" >
+            Logout </a></button>
+        </div>
+    {% endif %}
+    <div class="in-form">
+        <form class="access-form" method="POST" action="{% url 'access:registration3' %}">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="primaryAction" type="submit">Next Step</button>
+        </form>
+    </div>
+{% endblock %}

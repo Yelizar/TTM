@@ -1,0 +1,22 @@
+{% extends "website/base.html" %}
+{% block titel %} Login {% endblock %}
+
+{% block content %}
+    <div class="in-form">
+        <form class="access-form" method="POST" action="{% url 'access:login' %}">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="primaryAction" type="submit">Login</button>
+        </form>
+    </div>
+    <h1>OAuth</h1>
+    {% if user.is_authenticated %}
+      <p>Logged as {{ user.username }}</p>
+      <a class="btn btn-primary" href="{% url 'access:logout' %}">Logout</a>
+    {% else %}
+      <a class="btn btn-primary" href="{% url 'access:social:begin' 'google-oauth2' %}">
+        Login with Gmail
+      </a>
+    {% endif %}
+
+{% endblock %}

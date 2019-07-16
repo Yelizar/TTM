@@ -16,7 +16,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
 from telepot.namedtuple import InlineKeyboardButton, InlineKeyboardMarkup
 
-from .models import TelegramUser, TelegramSession
+from .models import TelegramUser, TelegramSession, TelegramTest
 from .utilit import add_questions
 
 TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
@@ -309,7 +309,8 @@ INTERNAL_COMMANDS = {
 # a record with 'user_id_00' matches with user result for a test 
 TEST_RESULTS = {}
 
-def user_level(self, score):
+
+def user_level(score):
         """Checking user level"""
         level = ""
         if 0 <= score <= 15:
@@ -326,30 +327,21 @@ def user_level(self, score):
             level = "Advanced"
         return level
 
+
 def result_counting(question_id, answer_id, user):
     # before first question result should be 0
     # else result from dict for current user
-    if question_id == 1:
-        result = 0
+    test, is_created = TelegramTest.objects.get_or_create(user=user)
+    test.current_question = question_id
+    _answers = json.dumps({question_id: answer_id})
+    if test.answers is None:
+        test.answers = json.dumps({"test": {question_id: answer_id}})
     else:
-        result = TEST_RESULTS['{user_id}_00'.format(user_id = user.chat_id)]
+        loaded_answer = json.loads(test.answers)
+        loaded_answer['test'].update({question_id: answer_id})
+        test.answers = json.dumps(loaded_answer)
+    test.save()
 
-    # writing current question result and test reselt for the user
-    TEST_RESULTS['{user_id}_{question_id}'.format(user_id = user.chat_id,
-                                                  question_id = question_id)] = answer_id
-    TEST_RESULTS['{user_id}_00'.format(user_id = user.chat_id)] = result + answer_id
-    result = TEST_RESULTS['{user_id}_00'.format(user_id = user.chat_id)]
-
-    # reading json dict with questions
-    with open(os.path.dirname(__file__)+"/quiz.json", "r") as read_file:
-        quiz = json.load(read_file)
-
-    # after checking last answer return info with test result
-    if question_id == str(len(quiz)-1):
-        level = user_level(TEST_RESULTS['{user_id}_00'.format(user_id = user.chat_id)])
-        return 'Your score is: {result} / {question_id}\nYour level is {level}'.format(result = result, question_id = question_id, level = level)
-    else:
-        return 0
 
 def _command_handler(cmd, user=None):
     """
@@ -367,12 +359,10 @@ def _command_handler(cmd, user=None):
         if len(data) == 3:
             field, next_question, param = data
             # НАТАША ТВОЯ ФУНКЦИЯ НАЧИНАЕТСЯ ТУТ, ПЕРЕДАВАЙ В НЕЕ (field, param, user)
-            result_counting(questionId=field, answerId=param, user=user)
-
+            result_counting(question_id=field[2:], answer_id=param, user=user)
             cmd = next_question
         _blank = EDIT_MESSAGE_TEXT
     result = _blank.get(cmd.lower(), None)
-
     return result
 
 

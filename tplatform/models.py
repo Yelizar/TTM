@@ -57,3 +57,22 @@ class TelegramSession(models.Model):
 
     def __str__(self):
         return '{}'.format(self.student.chat_id)
+
+
+class TelegramTest(models.Model):
+    user = models.ForeignKey(TelegramUser, on_delete=models.CASCADE)
+    current_question = models.IntegerField(default=1, blank=True)
+    result = models.CharField(max_length=20, default='New', blank=True)
+    answers = models.CharField(max_length=4196, blank=True, null=True)
+    created = models.DateTimeField(auto_now=False, auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True, auto_now_add=False)
+
+    objects = TelegramSessionManager()
+
+    class Meta:
+        verbose_name = 'TelegramSession'
+        verbose_name_plural = 'TelegramSessions'
+
+    def __str__(self):
+        return '{}'.format(self.user.name)
+

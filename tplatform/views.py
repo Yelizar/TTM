@@ -35,6 +35,24 @@ def apply(user):
     return False
 
 
+def user_level(score):
+    """Checking user level"""
+    level = ""
+    if 0 <= score <= 15:
+        level = "Starter"
+    if 15 < score <= 35:
+        level = "Elementary"
+    if 35 < score <= 55:
+        level = "Pre-Intermediate"
+    if 55 < score <= 75:
+        level = "Intermediate"
+    if 75 < score <= 95:
+        level = "Upper Intermediate"
+    if score > 95:
+        level = "Advanced"
+    return level
+
+
 def update_details(user, details):
     """
     :param user: class TelegramUser()
@@ -116,6 +134,21 @@ def _display_history_session(user):
             rate=history.rate,
             tutor=history.tutor)
     return history_list
+
+
+def _display_test_result(user):
+    test = TelegramTest.objects.get(user=user)
+    user_answers = json.loads(test.answers)
+    counter = 0
+    for item, value in user_answers['test'].items():
+        if ANSWERS[item] == value:
+            counter += 1
+    result = user_level(score=counter)
+    test.result = result
+    test.save()
+    return 'You have {correct_answers} correct answers. Your level is {level}'.format(correct_answers=counter, level=result)
+
+
 
 
 def _display_session_confirm():
@@ -202,9 +235,9 @@ def replaceable_button(buttons, user, condition):
                 try:
                     test = TelegramTest.objects.get(user=user)
                     if test.result == value[0]:
-                        index = 1
-                    else:
                         index = 0
+                    else:
+                        index = 1
                 except TelegramTest.DoesNotExist:
                     index = 1
     return buttons[:index] + buttons[index+1:]
@@ -230,6 +263,7 @@ COMMANDS = {
             '/t_confirm_session':       (_display_session_confirm, [('Done', '_session_done'),
                                                 ('Canceled', '_t_session_canceled')]),
             '/history_session':      (_display_history_session, None),
+            '/check_result':         (_display_test_result, None),
             # Command which user are not allowed to be found
             '/_details_updated':                      (_display_details_updated, None),
             '/_whaaaat?':                            (_display_sorry, None),
@@ -289,10 +323,10 @@ EDIT_MESSAGE_TEXT = {
                                                 ('Native Language', '*native_language')]),
             '*placement':               (None, None, ([('Start Test', '*start_test'),
                                                     ('Continue test', '*continue_test'),
-                                                    ('Check result', '*check_result')],
-                                                    {'test': ('answers', 'New')})),
+                                                    ('Check result', '/check_result')],
+                                                    {'test': ('answers', 'In progress')})),
             '*start_test':              (HELLO_STRING, [('I am ready!', '*q1')]),
-            '*continue_test':           ('You have test in progress', [('Continue', _continue_test)])
+            '*continue_test':           ('You have test in progress', [('I am ready!', _continue_test)]),
 }
 NEW_C, ANSWERS = add_questions()
 EDIT_MESSAGE_TEXT = {**EDIT_MESSAGE_TEXT, **NEW_C}
@@ -324,24 +358,6 @@ INTERNAL_COMMANDS = {
 TEST_RESULTS = {}
 
 
-def user_level(score):
-        """Checking user level"""
-        level = ""
-        if 0 <= score <= 15:
-            level = "Starter"
-        if 15 < score <= 35:
-            level = "Elementary"
-        if 35 < score <= 55:
-            level = "Pre-Intermediate"
-        if 55 < score <= 75:
-            level = "Intermediate"
-        if 75 < score <= 95:
-            level = "Upper Intermediate"
-        if score > 95:
-            level = "Advanced"
-        return level
-
-
 def result_counting(question_id, answer_id, user):
     # before first question result should be 0
     # else result from dict for current user
@@ -366,17 +382,20 @@ def _command_handler(cmd, user=None):
     result[1] - None or InlineKeyboardMarkup()
     result[2] - None or str 'tutor'/'student' to check access a user to a command
     """
-    _blank = dict()
+    _blank = EDIT_MESSAGE_TEXT
     if cmd[0] == '/':
         _blank = COMMANDS
-    elif cmd[0] == '*':
+    if cmd[0] == '*':
         data = cmd.split('#')
         if len(data) == 3:
             field, next_question, param = data
             # НАТАША ТВОЯ ФУНКЦИЯ НАЧИНАЕТСЯ ТУТ, ПЕРЕДАВАЙ В НЕЕ (field, param, user)
             result_counting(question_id=field[2:], answer_id=param, user=user)
-            cmd = next_question
-        _blank = EDIT_MESSAGE_TEXT
+            print(next_question)
+            if next_question == '*q121':
+                cmd = '*root'
+            else:
+                cmd = next_question
     result = _blank.get(cmd.lower(), None)
     return result
 
@@ -413,7 +432,7 @@ def _back_handler(root, data):
         if len(data) == 3:
             data = data[1]
             _back = root + '#{line}'.format(line=data)
-            if len(_back) > 64:  # Telegram API callback_data  1-64 bytes  | 1B = 1 character
+            while len(_back) > 64:  # Telegram API callback_data  1-64 bytes  | 1B = 1 character
                 _back = _back.split('#')
                 del _back[-5]
                 _back = '#'.join(_back)
@@ -600,8 +619,8 @@ class TelegramBotView(View):
                         session_update(interlocutor, details={'tutor': tutor, 'is_going': True})
                     if data == 'reject':
                         answer = _command_handler(cmd='*reject')
-                _back = _back_handler(root=root, data=data)
                 if answer:
+                    _back = _back_handler(root=root, data=data)
                     try:
                         if isinstance(answer[2], tuple):
                             # Only if it needs to replace a button

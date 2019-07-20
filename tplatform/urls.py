@@ -1,11 +1,11 @@
 # -*- coding: utf8 -*-
 
 from django.urls import path
-import tplatform.views as view
+from .views import TelegramBotView
 
 app_name = 'tplatform'
 
 urlpatterns = [
-     path('<path:bot_token>', view.TelegramBotView.as_view(), name='command')
+     path('<path:bot_token>', TelegramBotView.as_view(), name='command')
 
 ]

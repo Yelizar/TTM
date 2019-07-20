@@ -17,7 +17,7 @@ from django.views.generic import View
 from telepot.namedtuple import InlineKeyboardButton, InlineKeyboardMarkup
 
 from .models import TelegramUser, TelegramSession, TelegramTest
-from .utilit import add_questions
+from .utilit import add_questions, HELLO_STRING
 
 TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
 
@@ -126,14 +126,18 @@ def _display_details_updated():
     return "Details Updated"
 
 
-def make_inline_keyboard(button_text_data, back=None):
+def make_inline_keyboard(button_text_data, user=None, back=None):
     """
+    :param back:
+    :param user:
     :param button_text_data: list. [0] - Name of button [1] - Data of button
     :return: replay_markup(inline keyboard)
     """
     _button_set = []
     _page = 0
     for text, data in button_text_data:
+        if isinstance(data, types.FunctionType):
+            data = data(user)
         _button_set.append([(InlineKeyboardButton(text=text, callback_data=data))])
     if back:
         _button_set.insert(0, [(InlineKeyboardButton(text='Back', callback_data=back))])
@@ -194,20 +198,22 @@ def replaceable_button(buttons, user, condition):
                     index = 1
                 else:
                     index = 0
+            elif key == 'test':
+                try:
+                    test = TelegramTest.objects.get(user=user)
+                    if test.result == value[0]:
+                        index = 1
+                    else:
+                        index = 0
+                except TelegramTest.DoesNotExist:
+                    index = 1
     return buttons[:index] + buttons[index+1:]
 
 
-def _notice_handler(boolean=None, switcher=None):
-    """
-    Function performs the role to switch True to 'ON' False to 'OFF'
-    :param boolean: True or False
-    :param switcher: 'on' or 'off'
-    :return: bool or str
-    """
-    if boolean:
-        return 'ON' if boolean is True else 'OFF'
-    elif switcher:
-        return True if switcher == 'on' else False
+def _continue_test(user):
+    obj = TelegramTest.objects.get(user=user)
+    last_question = json.loads(obj.answers)
+    return '*q{i}'.format(i=int(list(last_question['test'].keys())[-1]) + 1)
 
 
 COMMANDS = {
@@ -281,9 +287,17 @@ EDIT_MESSAGE_TEXT = {
                                                 ('Phone', '_phone#await'),
                                                 ('CV', '_cv#await'),
                                                 ('Native Language', '*native_language')]),
+            '*placement':               (None, None, ([('Start Test', '*start_test'),
+                                                    ('Continue test', '*continue_test'),
+                                                    ('Check result', '*check_result')],
+                                                    {'test': ('answers', 'New')})),
+            '*start_test':              (HELLO_STRING, [('I am ready!', '*q1')]),
+            '*continue_test':           ('You have test in progress', [('Continue', _continue_test)])
 }
-NEW_C = add_questions()
+NEW_C, ANSWERS = add_questions()
 EDIT_MESSAGE_TEXT = {**EDIT_MESSAGE_TEXT, **NEW_C}
+pprint.pprint(EDIT_MESSAGE_TEXT)
+pprint.pprint(ANSWERS)
 
 
 INTERNAL_COMMANDS = {
@@ -336,6 +350,7 @@ def result_counting(question_id, answer_id, user):
     _answers = json.dumps({question_id: answer_id})
     if test.answers is None:
         test.answers = json.dumps({"test": {question_id: answer_id}})
+        test.result = 'In progress'
     else:
         loaded_answer = json.loads(test.answers)
         loaded_answer['test'].update({question_id: answer_id})
@@ -538,7 +553,7 @@ class TelegramBotView(View):
                 elif answer is None:
                     answer = _command_handler(cmd='/_whaaaat?')
                 elif answer[1]:
-                    replay_markup = make_inline_keyboard(button_text_data=answer[1], back=None)
+                    replay_markup = make_inline_keyboard(button_text_data=answer[1])
                 TelePot.sendMessage(chat_id, answer[0](), reply_markup=replay_markup)
             elif message_type == 'callback_query':
                 callback = message_body['callback_query']
@@ -598,7 +613,7 @@ class TelegramBotView(View):
                     except IndexError:
                         if isinstance(answer[1], list):
                             # return just inline key board
-                            replay_markup = make_inline_keyboard(button_text_data=answer[1], back=_back)
+                            replay_markup = make_inline_keyboard(button_text_data=answer[1], user=interlocutor, back=_back)
                     if isinstance(answer[0], str):
                         # send a message to user (above inline buttons)
                         TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),

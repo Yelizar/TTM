@@ -15,24 +15,21 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
 from telepot.namedtuple import InlineKeyboardButton, InlineKeyboardMarkup
+from django.db.models import Q
 
-from .models import TelegramUser, TelegramSession, TelegramTest
-from .utilit import add_questions, HELLO_STRING
-
-TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
+from tplatform.models import TelegramUser, TelegramSession, TelegramTest
+from tplatform.utilit import add_questions, HELLO_STRING
 
 
-def apply(user):
-    """send email and a message when tutor is applied"""
-    if user.cv is not None and user.phone is not None and user.appear is not None:
-        subject = 'New Tutor'
-        message = 'Hi Admin, {name} applied as a tutor. Chat ID - {chat_id}'.format(name=user.name, chat_id=user.chat_id)
-        email_from = settings.EMAIL_HOST_USER
-        recipient_list = [settings.EMAIL_FOR_NOTIFICATION]
-        send_mail(subject, message, email_from, recipient_list)
-        if TelePot.sendMessage(chat_id=settings.TELEGRAM_ADMIN_CHAT_ID, text=message):
-            return True
-    return False
+def _notice_handler(data):
+    """
+    Function performs the role to switch True to 'ON' False to 'OFF'
+    :return: bool or str
+    """
+    if isinstance(data, bool):
+        return 'ON' if data is True else 'OFF'
+    else:
+        return True if data == 'on' else False
 
 
 def user_level(score):
@@ -53,59 +50,6 @@ def user_level(score):
     return level
 
 
-def update_details(user, details):
-    """
-    :param user: class TelegramUser()
-    :param details: dict
-    :return:
-    """
-    try:
-        if TelegramUser.objects.filter(chat_id=user.chat_id).update(**details):
-            return True
-    except ValidationError:
-        return False
-
-
-def session_initialize(user, param=None):
-    """
-    :param user: class TelegramUser()
-    :return: class TelegramSession and True if created() False if get()
-    """
-    return TelegramSession.objects.get_or_create(student=user, language=user.learning_language, is_active=True)
-
-
-def session_get(details):
-    """
-    :param details: dict.
-    :return:
-    """
-    try:
-        return TelegramSession.objects.get(**details)
-    except TelegramSession.DoesNotExist:
-        return False
-
-
-def session_history(user):
-    return TelegramSession.objects.get_history(current_user=user)
-
-
-def session_update(user, details):
-    """
-    :param user: class TelegramUser()
-    :param details: dict. {field: value}
-    :return: True or False
-    """
-    try:
-        if TelegramSession.objects.filter(student=user, is_active=True).update(**details):
-            return True
-        elif TelegramSession.objects.filter(tutor=user, tutor_confirm=False).update(**details):
-            return True
-        else:
-            return False
-    except ValidationError:
-        return False
-
-
 def _display_help():
     return render_to_string('tplatform/help.md')
 
@@ -115,155 +59,25 @@ def _display_sorry():
                              "Please check available commands /help"
 
 
-def _display_tutor_notice(session):
-    return render_to_string('tplatform/tutor_notice.md').\
-        format(name=session.student.name, language=session.language)
-
-
-def _display_student_notice(user_info):
-    return render_to_string('tplatform/student_notice.md'). \
-        format(name=user_info.name, language=user_info.native_language)
-
-
-def _display_history_session(user):
-    history_queryset = session_history(user)
-    history_list = str()
-    for history in history_queryset:
-        history_list += "ID:{pk} | Rate:{rate} | Tutor:{tutor}\n".format(
-            pk=history.pk,
-            rate=history.rate,
-            tutor=history.tutor)
-    return history_list
-
-
-def _display_test_result(user):
-    test = TelegramTest.objects.get(user=user)
-    user_answers = json.loads(test.answers)
-    counter = 0
-    for item, value in user_answers['test'].items():
-        if ANSWERS[item] == value:
-            counter += 1
-    result = user_level(score=counter)
-    test.result = result
-    test.save()
-    return 'You have {correct_answers} correct answers. Your level is {level}'.format(correct_answers=counter, level=result)
-
-
-
-
-def _display_session_confirm():
-    return "Please confirm last session"
-
-
 def _display_details_updated():
-    return "Details Updated"
-
-
-def make_inline_keyboard(button_text_data, user=None, back=None):
-    """
-    :param back:
-    :param user:
-    :param button_text_data: list. [0] - Name of button [1] - Data of button
-    :return: replay_markup(inline keyboard)
-    """
-    _button_set = []
-    _page = 0
-    for text, data in button_text_data:
-        if isinstance(data, types.FunctionType):
-            data = data(user)
-        _button_set.append([(InlineKeyboardButton(text=text, callback_data=data))])
-    if back:
-        _button_set.insert(0, [(InlineKeyboardButton(text='Back', callback_data=back))])
-        _button_set.append([(InlineKeyboardButton(text='On Top', callback_data='on_top'))])
-    return InlineKeyboardMarkup(inline_keyboard=_button_set)
-
-
-def notice_tutors(session):
-    """
-    :param session: class. TelegramSession()
-    Send notification to all tutors(Notification - ON, Language = Student.language)
-    Inline keyboard:
-    Connect - contain session id.
-    Skip - remove keyboard
-    """
-    tutor_list = TelegramUser.objects.filter(notice=True, native_language=session.language)
-    for tutor in tutor_list:
-        TelePot.sendMessage(tutor.chat_id, _display_tutor_notice(session),
-                            reply_markup=make_inline_keyboard(
-                                [('Connect', 'connect {student_chat}'.format(student_chat=session.student.chat_id)),
-                                 ('Skip', 'skip')], back=None))
-
-
-def notice_tutor(tutor):
-    """
-    :param tutor: class TelegramUser()
-    Send notification to a tutor who has been chosen by student
-    """
-    TelePot.sendMessage(tutor.chat_id, "The student has chosen you, please go to your channel {url}".
-                        format(url=tutor.appear),)
-
-
-def notice_student(student_chat, user):
-    """
-    :param student_chat: str TelegramUser.object.chat_id
-    :param user: class TelegramUser(). Tutor instance who has been sent your details to student
-    :return:
-    Send notification to a student from tutor.
-    """
-    TelePot.sendMessage(student_chat, _display_student_notice(user),
-                        reply_markup=make_inline_keyboard(
-                            [('Confirm', 'confirm {chat_id}'.format(chat_id=user.chat_id)),
-                             ('Reject', 'reject')], back=None))
-
-
-def replaceable_button(buttons, user, condition):
-    index = 0
-    if len(condition) == 1:
-        for key, value in condition.items():
-            if key == 'session':
-                _session = session_get(details={'student': user.id, value[0]: value[1]})
-                if _session:
-                    index = 0
-                else:
-                    index = 1
-            elif key == 'user':
-                if user.serializable_value(value[0]) == value[1]:
-                    index = 1
-                else:
-                    index = 0
-            elif key == 'test':
-                try:
-                    test = TelegramTest.objects.get(user=user)
-                    if test.result == value[0]:
-                        index = 0
-                    else:
-                        index = 1
-                except TelegramTest.DoesNotExist:
-                    index = 1
-    return buttons[:index] + buttons[index+1:]
-
-
-def _continue_test(user):
-    obj = TelegramTest.objects.get(user=user)
-    last_question = json.loads(obj.answers)
-    return '*q{i}'.format(i=int(list(last_question['test'].keys())[-1]) + 1)
+    return "Details Updated.\nOpen new menu /start"
 
 
 COMMANDS = {
-            '/start':               (_display_help, [('Placement', '*placement'),
+            '/start':               (_display_help, (('Placement', '*placement'),
                                                      ('TalkToMe', '*talk_to_me'),
-                                                     ('TeachForUs', '*teach_for_us')]),
-            '/help':                (_display_help, [('Placement', '*placement'),
+                                                     ('TeachForUs', '*teach_for_us'))),
+            '/help':                (_display_help, (('Placement', '*placement'),
                                                      ('TalkToMe', '*talk_to_me'),
-                                                     ('TeachForUs', '*teach_for_us')]),
-            '/s_confirm_session':       (_display_session_confirm, [('Excellent', '_session_excellent'),
-                                                ('Nice', '_session_nice'),
-                                                ('Terrible', '_session_terrible'),
-                                                ('Canceled', '_s_session_canceled')]),
-            '/t_confirm_session':       (_display_session_confirm, [('Done', '_session_done'),
-                                                ('Canceled', '_t_session_canceled')]),
-            '/history_session':      (_display_history_session, None),
-            '/check_result':         (_display_test_result, None),
+                                                     ('TeachForUs', '*teach_for_us'))),
+            # '/s_confirm_session':       (_display_session_confirm, (('Excellent', '_session_excellent'),
+            #                                     ('Nice', '_session_nice'),
+            #                                     ('Terrible', '_session_terrible'),
+            #                                     ('Canceled', '_s_session_canceled'))),
+            # '/t_confirm_session':       (_display_session_confirm, (('Done', '_session_done'),
+            #                                     ('Canceled', '_t_session_canceled'))),
+            # '/history_session':      (_display_history_session, None),
+            # '/check_result':         (_display_test_result, None),
             # Command which user are not allowed to be found
             '/_details_updated':                      (_display_details_updated, None),
             '/_whaaaat?':                            (_display_sorry, None),
@@ -281,52 +95,47 @@ EDIT_MESSAGE_TEXT = {
     #       |               #
     # await |Wait an answer #
     #########################
-    """
-            '*init_success':         ("Session is initialized /session", None),
-            '*init_invalid':         ("You already have an active session /session", None),
-            '*cancel_success':       ("Session has been canceled /session", None),
-            '*cancel_invalid':       ("You don't have an active session /session", None),
-            '*connect':              ("You have been connect to session.\n"
+    """     '*connect':              ("You have been connect to session.\n"
                                       "Please wait while the student confirms session with you.", None),
             '*skip':                 ("Please wait next session", None),
             # '*confirm':              ["To start session follow the link ", None],
             '*reject':               ("Please wait next tutor", None),
 
-            '*root':                    (None, [('Placement', '*placement'),
+            '*root':                    (None, (('Placement', '*placement'),
                                                 ('TalkToMe', '*talk_to_me'),
-                                                ('TeachForUs', '*teach_for_us')]),
+                                                ('TeachForUs', '*teach_for_us'))),
 
-            '*talk_to_me':              (None, [('Settings', '*s_settings'),
-                                                ('Session', '*s_session')]),
-            '*s_settings':              (None, [('Native Language', '*native_language'),
-                                                ('Learning Language', '*learning_language')]),
-            '*native_language':         (None, [('English', '_native_language#eng'),
-                                                ('Russian', '_native_language#rus')]),
-            '*learning_language':       (None, [('English', '_learning_language#eng'),
-                                                ('Russian', '_learning_language#rus')]),
+            '*talk_to_me':              (None, (('Settings', '*s_settings'),
+                                                ('Session', '*s_session'))),
+            '*s_settings':              (None, (('Native Language', '*native_language'),
+                                                ('Learning Language', '*learning_language'))),
+            '*native_language':         ['Choose your native language', (('English', '_native_language#eng'),
+                                                ('Russian', '_native_language#rus'))],
+            '*learning_language':       ['Choose learning language', (('English', '_learning_language#eng'),
+                                                ('Russian', '_learning_language#rus'))],
 
-            '*s_session':               (None, None, ([('Initialize', '_init_session'),
+            '*s_session':               [None, None, ((('Initialize', '_init_session'),
                                                         ('Cancel', '_cancel_session'),
-                                                       ('History', '/history_session')],
-                                                        {'session': ('is_active', True)})),
-            '*teach_for_us':            (None, None, ([('Apply', '_apply'),
+                                                       ('History', '/history_session')),
+                                                        {'session': ('is_active', True)})],
+            '*teach_for_us':            [None, None, ((('Apply', '_apply'),
                                                       ('Notification', '*notification'),
-                                                        ('Settings', '*t_settings')],
-                                                        {'user': ('is_active', False)})),
-            '*notification':            (None, None, ([('On', '_notice_on'),
-                                                      ('Off', '_notice_off')],
-                                                        {'user': ('notice', False)})),
+                                                        ('Settings', '*t_settings')),
+                                                        {'user': ('is_active', False)})],
+            '*notification':            [None, None, ((('On', '_notice_on'),
+                                                      ('Off', '_notice_off')),
+                                                        {'user': ('notice', False)})],
 
-            '*t_settings':              (None, [('Appear', '_appear#await'),
+            '*t_settings':              [None, (('Appear', '_appear#await'),
                                                 ('Phone', '_phone#await'),
                                                 ('CV', '_cv#await'),
-                                                ('Native Language', '*native_language')]),
-            '*placement':               (None, None, ([('Start Test', '*start_test'),
+                                                ('Native Language', '*native_language'))],
+            '*placement':               [None, None, ((('Start Test', '*start_test'),
                                                     ('Continue test', '*continue_test'),
-                                                    ('Check result', '/check_result')],
-                                                    {'test': ('answers', 'In progress')})),
-            '*start_test':              (HELLO_STRING, [('I am ready!', '*q1')]),
-            '*continue_test':           ('You have test in progress', [('I am ready!', _continue_test)]),
+                                                    ('Check result', '/check_result')),
+                                                    {'test': ('answers', 'In progress')})],
+            '*start_test':              (HELLO_STRING, (('I am ready!', '*q1'))),
+            # '*continue_test':           ('You have test in progress', (('I am ready!', _continue_test))),
 }
 NEW_C, ANSWERS = add_questions()
 EDIT_MESSAGE_TEXT = {**EDIT_MESSAGE_TEXT, **NEW_C}
@@ -334,192 +143,399 @@ pprint.pprint(EDIT_MESSAGE_TEXT)
 pprint.pprint(ANSWERS)
 
 
-INTERNAL_COMMANDS = {
-            '_init_session':            (session_initialize, None),
-            '_cancel_session':          (session_update, {'is_active': False}),
-            '_notice_on':               (update_details, {'notice': True}),
-            '_notice_off':              (update_details, {'notice': False}),
-            '_apply':                   (apply, None),
-            '_session_excellent':       (session_update, {'student_confirm': True, 'rate': 5,
-                                                          'is_going': False, 'is_active': False}),
-            '_session_nice':            (session_update, {'student_confirm': True, 'rate': 4,
-                                                          'is_going': False, 'is_active': False}),
-            '_session_terrible':        (session_update, {'student_confirm': True, 'rate': 3,
-                                                          'is_going': False, 'is_active': False}),
-            '_session_done':            (session_update, {'tutor_confirm': True}),
-            '_t_session_canceled':      (session_update, {'tutor_confirm': True, 'rate': 0}),
-            '_s_session_canceled':      (session_update, {'tutor_confirm': True, 'is_going': False,
-                                                          'rate': 0, 'is_active': False})
-}
-
-# dictionary for saving user's test results 
-# {user1_question1 : 1}
-# a record with 'user_id_00' matches with user result for a test 
-TEST_RESULTS = {}
+TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
 
 
-def result_counting(question_id, answer_id, user):
-    # before first question result should be 0
-    # else result from dict for current user
-    test, is_created = TelegramTest.objects.get_or_create(user=user)
-    test.current_question = question_id
-    _answers = json.dumps({question_id: answer_id})
-    if test.answers is None:
-        test.answers = json.dumps({"test": {question_id: answer_id}})
-        test.result = 'In progress'
-    else:
-        loaded_answer = json.loads(test.answers)
-        loaded_answer['test'].update({question_id: answer_id})
-        test.answers = json.dumps(loaded_answer)
-    test.save()
+class TelegramRequest:
 
+    def __init__(self, request):
+        self.message_body = json.loads(request)
+        self.message_type = self.flavor()
+        self.user = self.get_user()
+        self.session = None
+        self.response = None
+        self.inline_message = None
+        self.back = None
+        self.root = None
+        self.internal_commands = {
+                                 '_init_session':            (self.initialize_session, None),
+                                 '_cancel_session':          (self.update_session, {'is_active': False}),
+                                 '_notice_on':               (self.update_user_details, {'notice': True}),
+                                 '_notice_off':              (self.update_user_details, {'notice': False}),
+                                 '_apply':                   (self.apply, None),
+                                # '_session_excellent':       (self.update_session, {'student_confirm': True, 'rate': 5,
+                                #                                               'is_going': False, 'is_active': False}),
+                                # '_session_nice':            (self.update_session, {'student_confirm': True, 'rate': 4,
+                                #                                               'is_going': False, 'is_active': False}),
+                                # '_session_terrible':        (self.update_session, {'student_confirm': True, 'rate': 3,
+                                #                                               'is_going': False, 'is_active': False}),
+                                # '_session_done':            (self.update_session, {'tutor_confirm': True}),
+                                # '_t_session_canceled':      (self.update_session, {'tutor_confirm': True, 'rate': 0}),
+                                # '_s_session_canceled':      (self.update_session, {'tutor_confirm': True, 'is_going': False,
+                                #                                                       'rate': 0, 'is_active': False})
+                                }
+        pprint.pprint(self.message_body)  # Print to check request
+        self.fork()
 
-def _command_handler(cmd, user=None):
-    """
-    :param cmd: str. It's a command(/) or internal command to change message(*) or text message (from user)
-    :return: tuple or None . It contains 3 params.
-    result[0] - function() which return always str
-    result[1] - None or InlineKeyboardMarkup()
-    result[2] - None or str 'tutor'/'student' to check access a user to a command
-    """
-    _blank = EDIT_MESSAGE_TEXT
-    if cmd[0] == '/':
-        _blank = COMMANDS
-    if cmd[0] == '*':
-        data = cmd.split('#')
-        if len(data) == 3:
-            field, next_question, param = data
-            # НАТАША ТВОЯ ФУНКЦИЯ НАЧИНАЕТСЯ ТУТ, ПЕРЕДАВАЙ В НЕЕ (field, param, user)
-            result_counting(question_id=field[2:], answer_id=param, user=user)
-            print(next_question)
-            if next_question == '*q121':
-                cmd = '*root'
+    def flavor(self):
+        """
+        :param msg: dict - received from telegram user(unserialized data JSON -> dict)
+        :return: str - message type.
+        A message's flavor may be one of these:
+
+        - ``chat``
+        - ``callback_query``
+        - ``edited_message``
+        - ``unrecognized``
+        planned- ``inline_query``
+        planned- ``chosen_inline_result``
+        planned- ``shipping_query``
+        planned- ``pre_checkout_query``
+        """
+        if isinstance(self.message_body, dict):
+            if 'callback_query' in self.message_body:
+                return 'callback_query'
+            elif 'message' in self.message_body:
+                return 'chat'
+            elif 'edited_message' in self.message_body:
+                return 'edited_message'
             else:
-                cmd = next_question
-    result = _blank.get(cmd.lower(), None)
-    return result
+                return 'unrecognized'
 
+    def get_user_credential(self):
+        """
+        :param msg: dict - received from telegram user(unserialized data JSON -> dict)
+        :param msg_type: read return: of flavor(msg)
+        :return:
+        """
+        _chat = None
+        if self.message_type == 'chat':
+            if 'chat' in self.message_body['message']:
+                _chat = self.message_body['message']['chat']
+        elif self.message_type == 'callback_query':
+            if 'chat' in self.message_body['callback_query']['message']:
+                _chat = self.message_body['callback_query']['message']['chat']
+        elif self.message_type == 'edited_message':
+            if 'chat' in self.message_body['edited_message']:
+                _chat = self.message_body['edited_message']['chat']
+        ###################### should be rewoked #########################
+        elif self.message_type == 'unrecognized':
+            return None, None, None
+        ##################################################################
+        name = _chat['first_name']
+        chat_id = _chat['id']
+        chat_type = _chat['type']
+        return name, chat_id, chat_type
 
-def _param_handler(cmd, user):
-    data = cmd.split('#')
-    answer = None
-    if len(data) == 1:
-        func, param = INTERNAL_COMMANDS.get(cmd.lower(), None)
-        is_updated = func(user, param)
-        if is_updated:
-            answer = _command_handler(cmd='*root')
-        return is_updated, answer
-    elif len(data) == 2:
-        field, param = data
-        if param == 'await':
-            cache.set('{chat_id}'.format(chat_id=user.chat_id), '{field}'.format(field=field[1:]), 90)
-            return True, None
-        elif update_details(user=user, details={field[1:]: param}):
-            return True, None
+    def fork(self):
+        if self.message_type == 'chat':
+            message = self.message_body['message']
+            self.chat_handler(message)
+            return True if self.chat_response() else False
+        elif self.message_type == 'callback_query':
+            callback = self.message_body['callback_query']
+            self.callback_handler(callback)
+            self.back_handler(data=callback['data'])
+            return True if self.callback_response(callback) else False
+
+    def chat_response(self):
+        reply_markup = None
+        if self.response[1]:
+            reply_markup = self.make_inline_keyboard()
+        TelePot.sendMessage(self.user.chat_id, self.response[0](), reply_markup=reply_markup)
+
+    def callback_response(self, callback):
+        reply_markup = None
+        if self.response:
+            if len(self.response) == 3:
+                # Only if it needs to replace a button
+                self.replaceable_button(buttons=self.response[2][0], condition=self.response[2][1])
+                # return just inline key board
+            reply_markup = self.make_inline_keyboard()
+            print(reply_markup)
+        if isinstance(self.response[0], str):
+            # send a message to user (above inline buttons)
+            try:
+                TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),
+                                    text=self.response[0],
+                                    reply_markup=reply_markup)
+            except telepot.exception.TelegramError:
+                self.inline_message = self.response[0]
+        elif isinstance(self.response[0], types.FunctionType):
+            # send a message below inline buttons
+            TelePot.sendMessage(self.user.chat_id,
+                                text=self.response[0]())
+        elif reply_markup:
+            # send a key board to user
+            TelePot.editMessageReplyMarkup(telepot.message_identifier(msg=callback['message']),
+                                           reply_markup=reply_markup)
+        if self.inline_message:
+            # send an inline message
+            TelePot.answerCallbackQuery(callback['id'],
+                                        text=self.inline_message)
+
+    def chat_handler(self, message):
+        content_type = telepot.glance(message, self.message_type)[0]
+        _cache = cache.get(str(self.user.chat_id))
+        if content_type == 'text':
+            text = message['text']
+            if _cache:
+                self.update_user_details(details={_cache: text})
+            else:
+                command = message['text'].split()
+                self.command_handler(cmd=command[0])
+        elif content_type == 'document':
+            document = message['document']
+            destination = settings.MEDIA_ROOT + '/' + document['file_name']
+            TelePot.download_file(document['file_id'], dest=destination)
+            if _cache:
+                self.update_user_cv(file_path=destination, file_name=document['file_name'])
+            else:
+                self.command_handler(cmd='/_whaaaat?')
+        cache.delete(str(self.user.chat_id))
+
+    def callback_handler(self, callback):
+        self.root = callback['message']['reply_markup']['inline_keyboard'][0][0]['callback_data']
+        data = callback['data']
+        if data[0] == '*' or data[0] == '/':
+            self.command_handler(data)
+        elif data[0] == '_':
+            self.internal_command_handler(data)
+        elif 'back_to' in data:
+            back = data.split('#')
+            self.command_handler(cmd=back[-2])
+            del back[-1]
+            self.root = '#'.join(back)
+        elif data == 'on_top':
+            self.command_handler(cmd='*root')
+            self.root = 'back_to #*root'
+        # _answer = check_session_confirm(interlocutor=interlocutor)
+        # if _answer is not None:
+        #     answer = _answer
+        # if data in ['connect', 'skip'] or 'connect' in data:
+        #     if 'connect' in data:
+        #         student_chat_id = data.split(" ")[1]
+        #         notice_student(student_chat=student_chat_id, user=interlocutor)
+        #         answer = _command_handler(cmd='*connect')
+        #     if data == 'skip':
+        #         answer = _command_handler(cmd='*skip')
+        # elif data in ['confirm', 'reject'] or 'confirm' in data:
+        #     if 'confirm' in data:
+        #         tutor_chat_id = data.split(" ")[1]
+        #         tutor = TelegramUser.objects.get(chat_id=tutor_chat_id)
+        #         tutor.notice = False
+        #         tutor.save()
+        #         answer = "To start session follow the link {url}".format(url=tutor.appear)
+        #         notice_tutor(tutor=tutor)
+        #         self.update_session(interlocutor, details={'tutor': tutor, 'is_going': True})
+        #     if data == 'reject':
+        #         answer = _command_handler(cmd='*reject')
+
+    def result_counting(self, question_id, answer_id):
+        # before first question result should be 0
+        # else result from dict for current user
+        test, is_created = TelegramTest.objects.get_or_create(user=self.user)
+        test.current_question = question_id
+        _answers = json.dumps({question_id: answer_id})
+        if test.answers is None:
+            test.answers = json.dumps({"test": {question_id: answer_id}})
+            test.result = 'In progress'
         else:
-            return False, None
+            loaded_answer = json.loads(test.answers)
+            loaded_answer['test'].update({question_id: answer_id})
+            test.answers = json.dumps(loaded_answer)
+        test.save()
 
+    def command_handler(self, cmd):
+        """
+        :param cmd: str. It's a command(/) or internal command to change message(*) or text message (from user)
+        :return: tuple or None . It contains 3 params.
+        result[0] - function() which return always str
+        result[1] - None or InlineKeyboardMarkup()
+        result[2] - None or str 'tutor'/'student' to check access a user to a command
+        """
+        _blank = EDIT_MESSAGE_TEXT
+        if cmd[0] == '/':
+            _blank = COMMANDS
+        elif cmd[0] == '*':
+            data = cmd.split('#')
+            if len(data) == 3:
+                field, next_question, param = data
+                self.result_counting(question_id=field[2:], answer_id=param)
+                if next_question == '*q121':
+                    cmd = '*root'
+                else:
+                    cmd = next_question
+        self.response = _blank.get(cmd.lower(), COMMANDS['/_whaaaat?'])
 
-def _back_handler(root, data):
-    if root == '*placement':
-        _back = 'back_to #*root#{line}'.format(line=data)
-    elif root == 'back_to #*root':
-        _back = None
-    elif len(root) < len(data) or data[0] == '_':
-        _back = root
-    else:
-        data = data.split('#')
-        if len(data) == 3:
-            data = data[1]
-            _back = root + '#{line}'.format(line=data)
-            while len(_back) > 64:  # Telegram API callback_data  1-64 bytes  | 1B = 1 character
-                _back = _back.split('#')
-                del _back[-5]
-                _back = '#'.join(_back)
+    def internal_command_handler(self, cmd):
+        data = cmd.split('#')
+        if len(data) == 1:
+            func, param = self.internal_commands.get(cmd.lower(), None)
+            func(param)
+        elif len(data) == 2:
+            field, param = data
+            if param == 'await':
+                cache.set('{chat_id}'.format(chat_id=self.user.chat_id), '{field}'.format(field=field[1:]), 90)
+                self.command_handler(cmd=self.root.split('#')[-1])
+                verb = 'type'
+                if field == '_cv':
+                    verb = 'upload'
+                self.response[0] = 'Please {verb} your {field}'.format(verb=verb, field=field[1:].upper())
+            else:
+                self.update_user_details(details={field[1:]: param})
+
+    def back_handler(self, data):
+        print(self.root)
+        if self.root == '*placement':
+            self.back = 'back_to #*root#{line}'.format(line=data)
+        elif self.root == 'back_to #*root':
+            self.back = None
+        elif len(self.root) < len(data) or data[0] == '_':
+            self.back = self.root
         else:
-            data = ''.join(data)
-            _back = root + '#{line}'.format(line=data)
-    return _back
+            data = data.split('#')
+            if len(data) == 3:
+                data = data[1]
+                self.back = self.root + '#{line}'.format(line=data)
+                while len(self.back) > 64:  # Telegram API callback_data  1-64 bytes  | 1B = 1 character
+                    self.back = self.back.split('#')
+                    del self.back[-5]
+                    self.back = '#'.join(self.back)
+            else:
+                data = ''.join(data)
+                self.back = self.root + '#{line}'.format(line=data)
 
+    def make_inline_keyboard(self):
+        """
+        :return: replay_markup(inline keyboard)
+        """
+        _button_set = []
+        if self.response[1] is None:
+            return None
+        for text, data in self.response[1]:
+            _button_set.append([(InlineKeyboardButton(text=text, callback_data=data))])
+        if self.back:
+            _button_set.insert(0, [(InlineKeyboardButton(text='Back', callback_data=self.back))])
+            _button_set.append([(InlineKeyboardButton(text='On Top', callback_data='on_top'))])
+        return InlineKeyboardMarkup(inline_keyboard=_button_set)
 
-def flavor(msg):
-    """
-    :param msg: dict - received from telegram user(unserialized data JSON -> dict)
-    :return: str - message type.
-    A message's flavor may be one of these:
+    def replaceable_button(self, buttons, condition):
+        index = 0
+        if len(condition) == 1:
+            for key, value in condition.items():
+                if key == 'session':
+                    self.get_session(details={'student': self.user.id, value[0]: value[1]})
+                    if self.session:
+                        index = 0
+                    else:
+                        index = 1
+                elif key == 'user':
+                    if self.user.serializable_value(value[0]) == value[1]:
+                        index = 1
+                    else:
+                        index = 0
+                elif key == 'test':
+                    try:
+                        test = TelegramTest.objects.get(user=self.user)
+                        if test.result == value[0]:
+                            index = 0
+                        else:
+                            index = 1
+                    except TelegramTest.DoesNotExist:
+                        index = 1
+        self.response[1] = buttons[:index] + buttons[index + 1:]
 
-    - ``chat``
-    - ``callback_query``
-    - ``edited_message``
-    - ``unrecognized``
-    planned- ``inline_query``
-    planned- ``chosen_inline_result``
-    planned- ``shipping_query``
-    planned- ``pre_checkout_query``
-    """
-    if isinstance(msg, dict):
-        if 'callback_query' in msg:
-            return 'callback_query'
-        elif 'message' in msg:
-            return 'chat'
-        elif 'edited_message' in msg:
-            return 'edited_message'
+    def update_user_cv(self, file_path, file_name):
+        fh = open(file_path, "r")
+        if fh:
+            file_content = ContentFile(fh.read())
+            self.user.cv.save(content=file_content, name=file_name)
+            fh.close()
+            if fh.closed:
+                os.remove(fh.name)
+            del fh
+            cmd = '/_details_updated'
         else:
-            return 'unrecognized'
+            cmd = None
+        self.command_handler(cmd=cmd)
 
+    def update_user_details(self, details):
+        try:
+            if TelegramUser.objects.filter(pk=self.user.pk).update(**details):
+                self.user.refresh_from_db()
+                self.update_handler(details)
+        except ValidationError:
+            self.inline_message = "Details hasn't been updated"
 
-def get_user_credential(msg, msg_type):
-    """
-    :param msg: dict - received from telegram user(unserialized data JSON -> dict)
-    :param msg_type: read return: of flavor(msg)
-    :return:
-    """
-    _chat = None
-    if msg_type == 'chat':
-        if 'chat' in msg['message']:
-            _chat = msg['message']['chat']
-    elif msg_type == 'callback_query':
-        if 'chat' in msg['callback_query']['message']:
-            _chat = msg['callback_query']['message']['chat']
-    elif msg_type == 'edited_message':
-        if 'chat' in msg['edited_message']:
-            _chat = msg['edited_message']['chat']
-    ###################### should be rewoked #########################
-    elif msg_type == 'unrecognized':
-        return None, None, None
-    ##################################################################
-    name = _chat['first_name']
-    chat_id = _chat['id']
-    chat_type = _chat['type']
-    return name, chat_id, chat_type
+    def get_user(self):
+        first_name, chat_id, chat_type = self.get_user_credential()
+        user, is_created = TelegramUser.objects.get_or_create(chat_id=chat_id,
+                                                              name=first_name,
+                                                              chat_type=chat_type)
+        if is_created:
+            TelePot.sendMessage(user.chat_id, 'Hi {username}'.format(username=user.name))
+        return user
 
+    def get_session(self, details):
+        """
+        :param details: dict.
+        :return:
+        """
+        try:
+            self.session = TelegramSession.objects.get(**details)
+        except TelegramSession.DoesNotExist:
+            self.session = None
 
-def save_document(user, file_path, name):
-    fh = open(file_path, "r")
-    if fh:
-        file_content = ContentFile(fh.read())
-        user.cv.save(content=file_content, name=name)
-        fh.close()
-        if fh.closed:
-            os.remove(fh.name)
-        del fh
-        return True
-    else:
+    def update_session(self, details):
+        """
+        :param details: dict. {field: value}
+        :return: True or False
+        """
+        try:
+            self.session = TelegramSession.objects.filter(Q(student=self.user) | Q(tutor=self.user)).update(**details)
+            self.update_handler(details)
+            self.command_handler(cmd=self.root.split('#')[-1])
+            self.response[0] = 'Session: canceled'
+            self.inline_message = 'Session status has been canceled'
+        except ValidationError:
+            self.inline_message = "Unknown Error"
+
+    def initialize_session(self, param=None):
+        """
+        :return: class TelegramSession and True if created() False if get()
+        """
+        self.session, is_created = TelegramSession.objects.get_or_create(student=self.user,
+                                                                language=self.user.learning_language,
+                                                                is_active=True)
+        if is_created:
+            self.command_handler(cmd=self.root.split('#')[-1])
+            self.response[0] = 'Session: active'
+            self.inline_message = 'Session has been created'
+
+    def update_handler(self, details):
+        for name, val in details.items():
+            if isinstance(val, bool):
+                val = _notice_handler(val)
+            self.inline_message = '{name}: {val}'.format(name=name.title(), val=val.title())
+            try:
+                self.command_handler(cmd=self.root.split('#')[-1])
+                self.response[0] = '{name}: {val}'.format(name=name.title(), val=val.title())
+            except AttributeError:
+                self.command_handler('/_details_updated')
+
+    def apply(self):
+        """send email and a message when tutor is applied"""
+        if self.user.cv is not None and self.user.phone is not None and self.user.appear is not None:
+            subject = 'New Tutor'
+            message = 'Hi Admin, {name} applied as a tutor. Chat ID - {chat_id}'.format(name=self.user.name,
+                                                                                        chat_id=self.user.chat_id)
+            email_from = settings.EMAIL_HOST_USER
+            recipient_list = [settings.EMAIL_FOR_NOTIFICATION]
+            send_mail(subject, message, email_from, recipient_list)
+            if TelePot.sendMessage(chat_id=settings.TELEGRAM_ADMIN_CHAT_ID, text=message):
+                return True
         return False
-
-
-def check_session_confirm(interlocutor):
-    answer = None
-    last_session = TelegramSession.objects.get_last_session(current_user=interlocutor)
-    if last_session:
-        if interlocutor.pk == last_session.tutor.pk and last_session.tutor_confirm is False:
-            answer = _command_handler('/t_confirm_session')
-        elif interlocutor.pk == last_session.student.pk and last_session.student_confirm is False:
-            answer = _command_handler('/s_confirm_session')
-        if answer:
-            return answer
-    else:
-        return None
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -533,122 +549,11 @@ class TelegramBotView(View):
             return HttpResponseForbidden('Invalid token')
         request_body = request.body.decode('utf-8')
         try:
-            message_body = json.loads(request_body)
-            message_type = flavor(message_body)
-
-            pprint.pprint(message_body)  # Print to check request
-
-            first_name, chat_id, chat_type = get_user_credential(msg=message_body,
-                                                                 msg_type=message_type)
-            interlocutor, is_created = TelegramUser.objects.get_or_create(chat_id=chat_id,
-                                                                          name=first_name,
-                                                                          chat_type=chat_type)
-            if is_created:
-                TelePot.sendMessage(interlocutor.chat_id, 'Hi {username}'.format(username=interlocutor.name))
-            replay_markup = None
-            answer = None
-            param = None
-            if message_type == 'chat':
-                message = message_body['message']
-                message_content = telepot.glance(message, message_type)  # chat/document/image etc
-                try:
-                    text = message['text']
-                    param = cache.get(str(chat_id))
-                    command = text.split()
-                    answer = _command_handler(cmd=command[0])
-                except KeyError:
-                    text = None
-                if param:
-                    if message_content[0] == 'document':
-                        destination = settings.MEDIA_ROOT + '/' + message['document']['file_name']
-                        TelePot.download_file(message['document']['file_id'], dest=destination)
-                        if save_document(user=interlocutor, file_path=destination, name=message['document']['file_name']):
-                            answer = _command_handler(cmd='/_details_updated')
-                        else:
-                            answer = _command_handler(cmd='/_whaaaat?')
-                    elif update_details(user=interlocutor, details={param: text}):
-                        answer = _command_handler(cmd='/_details_updated')
-                    cache.delete(str(chat_id))
-                elif answer is None:
-                    answer = _command_handler(cmd='/_whaaaat?')
-                elif answer[1]:
-                    replay_markup = make_inline_keyboard(button_text_data=answer[1])
-                TelePot.sendMessage(chat_id, answer[0](), reply_markup=replay_markup)
-            elif message_type == 'callback_query':
-                callback = message_body['callback_query']
-                root = callback['message']['reply_markup']['inline_keyboard'][0][0]['callback_data']
-                data = callback['data']
-                callback_answer = None
-                if data[0] == '*' or data[0] == '/':
-                    if data[1] == 'q':
-                        answer = _command_handler(cmd=data, user=interlocutor)
-                    else:
-                        answer = _command_handler(cmd=data)
-                elif data[0] == '_':
-                    result, answer = _param_handler(cmd=data, user=interlocutor)
-                    if result:
-                        callback_answer = 'Success'
-                    else:
-                        callback_answer = 'Failed'
-                elif 'back_to' in data:
-                    back = data.split('#')
-                    answer = _command_handler(cmd=back[-2])
-                    del back[-1]
-                    root = '#'.join(back)
-                elif data == 'on_top':
-                    answer = _command_handler(cmd='*root')
-                    root = 'back_to #*root'
-                _answer = check_session_confirm(interlocutor=interlocutor)
-                if _answer is not None:
-                    answer = _answer
-                if data in ['connect', 'skip'] or 'connect' in data:
-                    if 'connect' in data:
-                        student_chat_id = data.split(" ")[1]
-                        notice_student(student_chat=student_chat_id, user=interlocutor)
-                        answer = _command_handler(cmd='*connect')
-                    if data == 'skip':
-                        answer = _command_handler(cmd='*skip')
-                elif data in ['confirm', 'reject'] or 'confirm' in data:
-                    if 'confirm' in data:
-                        tutor_chat_id = data.split(" ")[1]
-                        tutor = TelegramUser.objects.get(chat_id=tutor_chat_id)
-                        tutor.notice = False
-                        tutor.save()
-                        answer = "To start session follow the link {url}".format(url=tutor.appear)
-                        notice_tutor(tutor=tutor)
-                        session_update(interlocutor, details={'tutor': tutor, 'is_going': True})
-                    if data == 'reject':
-                        answer = _command_handler(cmd='*reject')
-                if answer:
-                    _back = _back_handler(root=root, data=data)
-                    try:
-                        if isinstance(answer[2], tuple):
-                            # Only if it needs to replace a button
-                            buttons = replaceable_button(buttons=answer[2][0], user=TelegramUser.objects.get_or_create(
-                                chat_id=chat_id,
-                                name=first_name,
-                                chat_type=chat_type)[0], condition=answer[2][1])
-                            replay_markup = make_inline_keyboard(button_text_data=buttons, back=_back)
-                    except IndexError:
-                        if isinstance(answer[1], list):
-                            # return just inline key board
-                            replay_markup = make_inline_keyboard(button_text_data=answer[1], user=interlocutor, back=_back)
-                    if isinstance(answer[0], str):
-                        # send a message to user (above inline buttons)
-                        TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),
-                                                answer[0], reply_markup=replay_markup)
-                    elif isinstance(answer[0], types.FunctionType):
-                        # send a message below inline buttons
-                        TelePot.sendMessage(chat_id, text=answer[0](interlocutor))
-                    elif replay_markup:
-                        # send a key board to user
-                        TelePot.editMessageReplyMarkup(telepot.message_identifier(msg=callback['message']),
-                                                       reply_markup=replay_markup)
-                if callback_answer:
-                    # send an inline message
-                    TelePot.answerCallbackQuery(callback['id'], text=callback_answer)
-
-            return JsonResponse({}, status=200)
+            if TelegramRequest(request_body):
+                return JsonResponse({}, status=200)
         except ValueError:
             return HttpResponseBadRequest('Invalid request body')
+
+
+
 

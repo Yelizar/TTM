@@ -21,7 +21,7 @@ class TelegramUser(models.Model):
     dob = models.DateField('Date of birthday', auto_now=False, auto_now_add=False, blank=True, null=True)
     cv = models.FileField(upload_to=tutor_directory_path, blank=True, null=True)
 
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
 
     created = models.DateTimeField(auto_now=False, auto_now_add=True)
     updated = models.DateTimeField(auto_now=True, auto_now_add=False)

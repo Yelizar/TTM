@@ -71,13 +71,7 @@ COMMANDS = {
             '/help':                (_display_help, (('Placement', '*placement'),
                                                      ('TalkToMe', '*talk_to_me'),
                                                      ('TeachForUs', '*teach_for_us'))),
-            # '/s_confirm_session':       (_display_session_confirm, (('Excellent', '_session_excellent'),
-            #                                     ('Nice', '_session_nice'),
-            #                                     ('Terrible', '_session_terrible'),
-            #                                     ('Canceled', '_s_session_canceled'))),
-            # '/t_confirm_session':       (_display_session_confirm, (('Done', '_session_done'),
-            #                                     ('Canceled', '_t_session_canceled'))),
-            # '/history_session':      (_display_history_session, None),
+
             # '/check_result':         (_display_test_result, None),
             # Command which user are not allowed to be found
             '/_details_updated':                      (_display_details_updated, None),
@@ -119,7 +113,7 @@ EDIT_MESSAGE_TEXT = {
 
             '*s_session':               [None, None, ((('Initialize', '_init_session'),
                                                         ('Cancel', '_cancel_session'),
-                                                       ('History', '/history_session')),
+                                                       ('History', '_history_session')),
                                                         {'session': ('is_active', True)})],
             '*teach_for_us':            [None, None, ((('Apply', '_apply'),
                                                       ('Notification', '*notification'),
@@ -139,6 +133,12 @@ EDIT_MESSAGE_TEXT = {
                                                     {'test': ('answers', 'In progress')})],
             '*applied':                 ['You have been applied.\nThank you.', None],
             '*start_test':              (HELLO_STRING, (('I am ready!', '*q1'))),
+            '*s_confirm_session':       ["Please confirm last session", (('Excellent', '_session_excellent'),
+                                                ('Nice', '_session_nice'),
+                                                ('Terrible', '_session_terrible'),
+                                                ('Canceled', '_s_session_canceled'))],
+            '*t_confirm_session':       ["Please confirm last session", (('Done', '_session_done'),
+                                                ('Canceled', '_t_session_canceled'))],
             # '*continue_test':           ('You have test in progress', (('I am ready!', _continue_test))),
 }
 NEW_C, ANSWERS = add_questions()
@@ -217,28 +217,29 @@ class TelegramRequest:
         self.message_body = json.loads(request)
         self.message_type = self.flavor()
         self.user = self.get_user()
+        self.session = None
         self.back = None
         self.root = None
-        self.session = None
         self.response = None
         self.message_id = None
         self.inline_message = None
         self.internal_commands = {
-                                 '_init_session':            (self.initialize_session, None),
-                                 '_cancel_session':          (self.update_session, {'is_active': False}),
-                                 '_notice_on':               (self.update_user_details, {'notice': True}),
-                                 '_notice_off':              (self.update_user_details, {'notice': False}),
-                                 '_apply':                   (self.apply, None),
-                                # '_session_excellent':       (self.update_session, {'student_confirm': True, 'rate': 5,
-                                #                                               'is_going': False, 'is_active': False}),
-                                # '_session_nice':            (self.update_session, {'student_confirm': True, 'rate': 4,
-                                #                                               'is_going': False, 'is_active': False}),
-                                # '_session_terrible':        (self.update_session, {'student_confirm': True, 'rate': 3,
-                                #                                               'is_going': False, 'is_active': False}),
-                                # '_session_done':            (self.update_session, {'tutor_confirm': True}),
-                                # '_t_session_canceled':      (self.update_session, {'tutor_confirm': True, 'rate': 0}),
-                                # '_s_session_canceled':      (self.update_session, {'tutor_confirm': True, 'is_going': False,
-                                #                                                       'rate': 0, 'is_active': False})
+                                 '_init_session':           (self.initialize_session, None),
+                                 '_cancel_session':         (self.update_session, {'is_active': False}),
+                                 '_notice_on':              (self.update_user_details, {'notice': True}),
+                                 '_notice_off':             (self.update_user_details, {'notice': False}),
+                                 '_apply':                  (self.apply, None),
+                                 '_history_session':        (self._display_session_history, None),
+                                 '_session_excellent':      (self.update_session, {'student_confirm': True, 'rate': 5,
+                                                                                   'is_active': False, 'is_going': False}),
+                                 '_session_nice':           (self.update_session, {'student_confirm': True, 'rate': 4,
+                                                                                   'is_active': False, 'is_going': False}),
+                                 '_session_terrible':       (self.update_session, {'student_confirm': True, 'rate': 3,
+                                                                                   'is_active': False, 'is_going': False}),
+                                 '_session_done':           (self.update_session, {'tutor_confirm': True}),
+                                 '_t_session_canceled':     (self.update_session, {'tutor_confirm': True, 'rate': 0}),
+                                 '_s_session_canceled':     (self.update_session, {'tutor_confirm': True, 'rate': 0,
+                                                                                   'is_active': False, 'is_going': False})
                                 }
         pprint.pprint(self.message_body)  # Print to check request
         self.fork()
@@ -383,9 +384,9 @@ class TelegramRequest:
         elif data == 'on_top':
             self.command_handler(cmd='*root')
             self.root = 'back_to #*root'
-        # _answer = check_session_confirm(interlocutor=interlocutor)
-        # if _answer is not None:
-        #     answer = _answer
+        self.session = TelegramSession.objects.get_last_session(self.user)
+        if self.session:
+            self.session_confirmation_handler()
         if data in ['connect', 'skip'] or 'connect' in data:
             if 'connect' in data:
                 student_chat_id = data.split(" ")[1]
@@ -567,14 +568,19 @@ class TelegramRequest:
         :return: True or False
         """
         try:
-            self.session = TelegramSession.objects.get_last_session(self.user)
+            if self.session is None:
+                self.session = TelegramSession.objects.active_session(self.user)
+            print(self.session)
             TelegramSession.objects.filter(
                 Q(student=self.user, is_active=True) |
-                Q(tutor=self.user, is_active=True)).update(**details)
+                Q(tutor=self.user, tutor_confirm=False)).update(**details)
             self.session.refresh_from_db()
+            print(self.session)
             self._display_session_details()
         except ValidationError:
             self.inline_message = "Unknown Error"
+        except AttributeError:
+            self.command_handler(cmd='/root')
 
     def initialize_session(self, param=None):
         """
@@ -592,6 +598,12 @@ class TelegramRequest:
                 val = _notice_handler(val).title()
             name = name.title()
             self.inline_message = '{name}: {val}'.format(name=name, val=val)
+
+    def session_confirmation_handler(self):
+        if self.user.pk == self.session.tutor.pk and self.session.tutor_confirm is False:
+            self.command_handler(cmd='*t_confirm_session')
+        elif self.user.pk == self.session.student.pk and self.session.student_confirm is False:
+            self.command_handler(cmd='*s_confirm_session')
 
     def apply(self, param=None):
         """send email and a message when tutor is applied"""
@@ -611,7 +623,6 @@ class TelegramRequest:
     def _display_user_details(self):
         self.message_id = cache.get(str('message_id_{}'.format(self.user.chat_id)))
         _cache = cache.get(str(self.user.chat_id))
-        print(self.message_id, _cache)
         if self.message_id and _cache:
             self.command_handler(cmd='*t_settings')
             self.back = 'back_to #*root#*t_settings'
@@ -638,6 +649,7 @@ class TelegramRequest:
             self.response = [None, [['Appear', '{url}'.format(url=self.session.tutor.appear)]]]
         else:
             self.command_handler(cmd=self.root.split('#')[-1])
+        print(self.response)
 
         self.response[0] = 'Session\n' \
                            'Language: {lng}\n' \
@@ -645,6 +657,17 @@ class TelegramRequest:
                            'Tutor: {tutor}'.format(lng=str(self.session.language),
                                                    active=str(self.session.is_active),
                                                    tutor=self.session.tutor)
+
+    def _display_session_history(self, param=None):
+        history_queryset = TelegramSession.objects.get_history(self.user)
+        history_list = str()
+        for history in history_queryset:
+            history_list += "ID:{pk} | Rate:{rate} | Tutor:{tutor}\n".format(
+                pk=history.pk,
+                rate=history.rate,
+                tutor=history.tutor)
+        self.command_handler(cmd=self.root.split('#')[-1])
+        self.response[0] = history_list
 
 
 @method_decorator(csrf_exempt, name='dispatch')

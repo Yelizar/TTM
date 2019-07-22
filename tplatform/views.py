@@ -137,6 +137,7 @@ EDIT_MESSAGE_TEXT = {
                                                     ('Continue test', '*continue_test'),
                                                     ('Check result', '/check_result')),
                                                     {'test': ('answers', 'In progress')})],
+            '*applied':                 ['You have been applied.\nThank you.', None],
             '*start_test':              (HELLO_STRING, (('I am ready!', '*q1'))),
             # '*continue_test':           ('You have test in progress', (('I am ready!', _continue_test))),
 }
@@ -216,11 +217,12 @@ class TelegramRequest:
         self.message_body = json.loads(request)
         self.message_type = self.flavor()
         self.user = self.get_user()
-        self.session = None
-        self.response = None
-        self.inline_message = None
         self.back = None
         self.root = None
+        self.session = None
+        self.response = None
+        self.message_id = None
+        self.inline_message = None
         self.internal_commands = {
                                  '_init_session':            (self.initialize_session, None),
                                  '_cancel_session':          (self.update_session, {'is_active': False}),
@@ -306,7 +308,13 @@ class TelegramRequest:
         reply_markup = None
         if self.response[1]:
             reply_markup = self.make_inline_keyboard()
-        TelePot.sendMessage(self.user.chat_id, self.response[0](), reply_markup=reply_markup)
+        if self.message_id:
+            TelePot.editMessageText((self.user.chat_id, self.message_id), text=self.response[0], reply_markup=reply_markup)
+        else:
+            _message = TelePot.sendMessage(self.user.chat_id, self.response[0](), reply_markup=reply_markup)
+            self.message_id = _message['message_id']
+            cache.set('message_id_{chat_id}'.format(chat_id=self.user.chat_id),
+                      '{message_id}'.format(message_id=self.message_id), 3600)
 
     def callback_response(self, callback):
         reply_markup = None
@@ -327,7 +335,7 @@ class TelegramRequest:
         elif isinstance(self.response[0], types.FunctionType):
             # send a message below inline buttons
             TelePot.sendMessage(self.user.chat_id,
-                                text=self.response[0]())
+                                           text=self.response[0]())
         elif reply_markup:
             # send a key board to user
             TelePot.editMessageReplyMarkup(telepot.message_identifier(msg=callback['message']),
@@ -345,7 +353,7 @@ class TelegramRequest:
             if _cache:
                 self.update_user_details(details={_cache: text})
             else:
-                command = message['text'].split()
+                command = text.split()
                 self.command_handler(cmd=command[0])
         elif content_type == 'document':
             document = message['document']
@@ -441,7 +449,8 @@ class TelegramRequest:
         elif len(data) == 2:
             field, param = data
             if param == 'await':
-                cache.set('{chat_id}'.format(chat_id=self.user.chat_id), '{field}'.format(field=field[1:]), 90)
+                cache.set('{chat_id}'.format(chat_id=self.user.chat_id),
+                          '{field}'.format(field=field[1:]), 90)
                 self.command_handler(cmd=self.root.split('#')[-1])
                 verb = 'type'
                 if field == '_cv':
@@ -523,16 +532,13 @@ class TelegramRequest:
             if fh.closed:
                 os.remove(fh.name)
             del fh
-            cmd = '/_details_updated'
-        else:
-            cmd = None
-        self.command_handler(cmd=cmd)
+        self._display_user_details()
 
     def update_user_details(self, details):
         try:
             if TelegramUser.objects.filter(pk=self.user.pk).update(**details):
                 self.user.refresh_from_db()
-                self.update_handler(details)
+                self._display_user_details()
         except ValidationError:
             self.inline_message = "Details hasn't been updated"
 
@@ -566,7 +572,7 @@ class TelegramRequest:
                 Q(student=self.user, is_active=True) |
                 Q(tutor=self.user, is_active=True)).update(**details)
             self.session.refresh_from_db()
-            self._display_session_status()
+            self._display_session_details()
         except ValidationError:
             self.inline_message = "Unknown Error"
 
@@ -578,7 +584,7 @@ class TelegramRequest:
                                                                 language=self.user.learning_language,
                                                                 is_active=True)
         if is_created:
-            self._display_session_status()
+            self._display_session_details()
 
     def update_handler(self, details):
         for name, val in details.items():
@@ -586,13 +592,8 @@ class TelegramRequest:
                 val = _notice_handler(val).title()
             name = name.title()
             self.inline_message = '{name}: {val}'.format(name=name, val=val)
-            try:
-                self.command_handler(cmd=self.root.split('#')[-1])
-                self.response[0] = '{name}: {val}'.format(name=name, val=val)
-            except AttributeError:
-                self.command_handler('/_details_updated')
 
-    def apply(self):
+    def apply(self, param=None):
         """send email and a message when tutor is applied"""
         if self.user.cv is not None and self.user.phone is not None and self.user.appear is not None:
             subject = 'New Tutor'
@@ -602,20 +603,48 @@ class TelegramRequest:
             recipient_list = [settings.EMAIL_FOR_NOTIFICATION]
             send_mail(subject, message, email_from, recipient_list)
             if TelePot.sendMessage(chat_id=settings.TELEGRAM_ADMIN_CHAT_ID, text=message):
-                return True
-        return False
+                self.inline_message = 'Thank you!'
+        else:
+            self.inline_message = 'Please check your details!'
+        self._display_user_details()
 
-    def _display_session_status(self):
+    def _display_user_details(self):
+        self.message_id = cache.get(str('message_id_{}'.format(self.user.chat_id)))
+        _cache = cache.get(str(self.user.chat_id))
+        print(self.message_id, _cache)
+        if self.message_id and _cache:
+            self.command_handler(cmd='*t_settings')
+            self.back = 'back_to #*root#*t_settings'
+        else:
+            self.command_handler(self.root.split('#')[-1])
+        cv = None
+        if self.user.cv:
+            cv = 'Uploaded'
+        self.response[0] = 'Name: {name}\n' \
+                           'Notification: {notice}\n' \
+                           'Native language: {lng}\n' \
+                           'Appear: {appear}\n' \
+                           'Phone: {phone}\n' \
+                           'CV: {cv}'.format(name=self.user.name,
+                                             notice=_notice_handler(self.user.notice),
+                                             lng=self.user.native_language,
+                                             appear=self.user.appear,
+                                             phone=self.user.phone,
+                                             cv=cv)
+
+    def _display_session_details(self):
         self.inline_message = 'Session Status has been changed'
         if 'confirm' in self.root:
             self.response = [None, [['Appear', '{url}'.format(url=self.session.tutor.appear)]]]
         else:
             self.command_handler(cmd=self.root.split('#')[-1])
 
-        self.response[0] = 'Session\nLanguage: {lng}\nInitialized: {active}\nTutor: {tutor}'. \
-                             format(lng=str(self.session.language),
-                                    active=str(self.session.is_active),
-                                    tutor=self.session.tutor)
+        self.response[0] = 'Session\n' \
+                           'Language: {lng}\n' \
+                           'Initialized: {active}\n' \
+                           'Tutor: {tutor}'.format(lng=str(self.session.language),
+                                                   active=str(self.session.is_active),
+                                                   tutor=self.session.tutor)
 
 
 @method_decorator(csrf_exempt, name='dispatch')

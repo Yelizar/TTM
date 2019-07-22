@@ -63,6 +63,7 @@ def _display_details_updated():
     return "Details Updated.\nOpen new menu /start"
 
 
+
 COMMANDS = {
             '/start':               (_display_help, (('Placement', '*placement'),
                                                      ('TalkToMe', '*talk_to_me'),
@@ -80,7 +81,7 @@ COMMANDS = {
             # '/check_result':         (_display_test_result, None),
             # Command which user are not allowed to be found
             '/_details_updated':                      (_display_details_updated, None),
-            '/_whaaaat?':                            (_display_sorry, None),
+            '/_whaaaat?':                            (_display_sorry, None)
         }
 
 # Callback for callbacks =)
@@ -95,7 +96,9 @@ EDIT_MESSAGE_TEXT = {
     #       |               #
     # await |Wait an answer #
     #########################
-    """     '*connect':              ("You have been connect to session.\n"
+    """     
+            '':                       (None, None),
+            '*connect':              ("You have been connect to session.\n"
                                       "Please wait while the student confirms session with you.", None),
             '*skip':                 ("Please wait next session", None),
             # '*confirm':              ["To start session follow the link ", None],
@@ -144,6 +147,67 @@ pprint.pprint(ANSWERS)
 
 
 TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
+
+
+def _display_tutor_notice(session):
+    return render_to_string('tplatform/tutor_notice.md').\
+        format(name=session.student.name, language=session.language)
+
+
+def _display_student_notice(user_info):
+    return render_to_string('tplatform/student_notice.md'). \
+        format(name=user_info.name, language=user_info.native_language)
+
+
+def notice_tutors(session):
+    """
+    :param session: class. TelegramSession()
+    Send notification to all tutors(Notification - ON, Language = Student.language)
+    Inline keyboard:
+    Connect - contain session id.
+    Skip - remove keyboard
+    """
+    tutor_list = TelegramUser.objects.filter(notice=True, native_language=session.language)
+    for tutor in tutor_list:
+        TelePot.sendMessage(tutor.chat_id, _display_tutor_notice(session),
+                            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                                [InlineKeyboardButton(
+                                    text='Connect',
+                                    callback_data='connect {student_chat}'.format(student_chat=session.student.chat_id))],
+                                [InlineKeyboardButton(
+                                    text='Skip',
+                                    callback_data='skip')]]))
+
+
+def notice_student(student_chat, user):
+    """
+    :param student_chat: str TelegramUser.object.chat_id
+    :param user: class TelegramUser(). Tutor instance who has been sent your details to student
+    :return:
+    Send notification to a student from tutor.
+    """
+    TelePot.sendMessage(student_chat, _display_student_notice(user),
+                        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                            [InlineKeyboardButton(
+                                text='Confirm',
+                                callback_data='confirm {chat_id}'.format(chat_id=user.chat_id),
+                                )],
+                            [InlineKeyboardButton(
+                                text='Reject',
+                                callback_data='reject')]]))
+
+
+def notice_tutor(tutor):
+    """
+    :param tutor: class TelegramUser()
+    Send notification to a tutor who has been chosen by student
+    """
+    TelePot.sendMessage(tutor.chat_id, "The student has chosen you, please go to your channel",
+                        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                            [InlineKeyboardButton(
+                                text='Appear',
+                                url='{url}'.format(url=tutor.appear),
+                            )]]))
 
 
 class TelegramRequest:
@@ -252,13 +316,12 @@ class TelegramRequest:
                 self.replaceable_button(buttons=self.response[2][0], condition=self.response[2][1])
                 # return just inline key board
             reply_markup = self.make_inline_keyboard()
-            print(reply_markup)
         if isinstance(self.response[0], str):
             # send a message to user (above inline buttons)
             try:
                 TelePot.editMessageText((telepot.message_identifier(msg=callback['message'])),
-                                    text=self.response[0],
-                                    reply_markup=reply_markup)
+                                        text=self.response[0],
+                                        reply_markup=reply_markup)
             except telepot.exception.TelegramError:
                 self.inline_message = self.response[0]
         elif isinstance(self.response[0], types.FunctionType):
@@ -295,7 +358,10 @@ class TelegramRequest:
         cache.delete(str(self.user.chat_id))
 
     def callback_handler(self, callback):
-        self.root = callback['message']['reply_markup']['inline_keyboard'][0][0]['callback_data']
+        try:
+            self.root = callback['message']['reply_markup']['inline_keyboard'][0][0]['callback_data']
+        except KeyError:
+            self.root = None
         data = callback['data']
         if data[0] == '*' or data[0] == '/':
             self.command_handler(data)
@@ -312,24 +378,23 @@ class TelegramRequest:
         # _answer = check_session_confirm(interlocutor=interlocutor)
         # if _answer is not None:
         #     answer = _answer
-        # if data in ['connect', 'skip'] or 'connect' in data:
-        #     if 'connect' in data:
-        #         student_chat_id = data.split(" ")[1]
-        #         notice_student(student_chat=student_chat_id, user=interlocutor)
-        #         answer = _command_handler(cmd='*connect')
-        #     if data == 'skip':
-        #         answer = _command_handler(cmd='*skip')
-        # elif data in ['confirm', 'reject'] or 'confirm' in data:
-        #     if 'confirm' in data:
-        #         tutor_chat_id = data.split(" ")[1]
-        #         tutor = TelegramUser.objects.get(chat_id=tutor_chat_id)
-        #         tutor.notice = False
-        #         tutor.save()
-        #         answer = "To start session follow the link {url}".format(url=tutor.appear)
-        #         notice_tutor(tutor=tutor)
-        #         self.update_session(interlocutor, details={'tutor': tutor, 'is_going': True})
-        #     if data == 'reject':
-        #         answer = _command_handler(cmd='*reject')
+        if data in ['connect', 'skip'] or 'connect' in data:
+            if 'connect' in data:
+                student_chat_id = data.split(" ")[1]
+                notice_student(student_chat=student_chat_id, user=self.user)
+                self.command_handler(cmd='*connect')
+            elif data == 'skip':
+                self.command_handler(cmd='*skip')
+        elif data in ['confirm', 'reject'] or 'confirm' in data:
+            if 'confirm' in data:
+                tutor_chat_id = data.split(" ")[1]
+                tutor = TelegramUser.objects.get(chat_id=tutor_chat_id)
+                tutor.notice = False
+                tutor.save()
+                notice_tutor(tutor=tutor)
+                self.update_session(details={'tutor': tutor, 'is_going': True})
+            if data == 'reject':
+                self.command_handler(cmd='*reject')
 
     def result_counting(self, question_id, answer_id):
         # before first question result should be 0
@@ -386,7 +451,6 @@ class TelegramRequest:
                 self.update_user_details(details={field[1:]: param})
 
     def back_handler(self, data):
-        print(self.root)
         if self.root == '*placement':
             self.back = 'back_to #*root#{line}'.format(line=data)
         elif self.root == 'back_to #*root':
@@ -414,7 +478,11 @@ class TelegramRequest:
         if self.response[1] is None:
             return None
         for text, data in self.response[1]:
-            _button_set.append([(InlineKeyboardButton(text=text, callback_data=data))])
+            if data[0:4] == 'http':
+                self.back = None
+                _button_set.append([(InlineKeyboardButton(text=text, url=data))])
+            else:
+                _button_set.append([(InlineKeyboardButton(text=text, callback_data=data))])
         if self.back:
             _button_set.insert(0, [(InlineKeyboardButton(text='Back', callback_data=self.back))])
             _button_set.append([(InlineKeyboardButton(text='On Top', callback_data='on_top'))])
@@ -493,11 +561,12 @@ class TelegramRequest:
         :return: True or False
         """
         try:
-            self.session = TelegramSession.objects.filter(Q(student=self.user) | Q(tutor=self.user)).update(**details)
-            self.update_handler(details)
-            self.command_handler(cmd=self.root.split('#')[-1])
-            self.response[0] = 'Session: canceled'
-            self.inline_message = 'Session status has been canceled'
+            self.session = TelegramSession.objects.get_last_session(self.user)
+            TelegramSession.objects.filter(
+                Q(student=self.user, is_active=True) |
+                Q(tutor=self.user, is_active=True)).update(**details)
+            self.session.refresh_from_db()
+            self._display_session_status()
         except ValidationError:
             self.inline_message = "Unknown Error"
 
@@ -509,18 +578,17 @@ class TelegramRequest:
                                                                 language=self.user.learning_language,
                                                                 is_active=True)
         if is_created:
-            self.command_handler(cmd=self.root.split('#')[-1])
-            self.response[0] = 'Session: active'
-            self.inline_message = 'Session has been created'
+            self._display_session_status()
 
     def update_handler(self, details):
         for name, val in details.items():
             if isinstance(val, bool):
-                val = _notice_handler(val)
-            self.inline_message = '{name}: {val}'.format(name=name.title(), val=val.title())
+                val = _notice_handler(val).title()
+            name = name.title()
+            self.inline_message = '{name}: {val}'.format(name=name, val=val)
             try:
                 self.command_handler(cmd=self.root.split('#')[-1])
-                self.response[0] = '{name}: {val}'.format(name=name.title(), val=val.title())
+                self.response[0] = '{name}: {val}'.format(name=name, val=val)
             except AttributeError:
                 self.command_handler('/_details_updated')
 
@@ -536,6 +604,18 @@ class TelegramRequest:
             if TelePot.sendMessage(chat_id=settings.TELEGRAM_ADMIN_CHAT_ID, text=message):
                 return True
         return False
+
+    def _display_session_status(self):
+        self.inline_message = 'Session Status has been changed'
+        if 'confirm' in self.root:
+            self.response = [None, [['Appear', '{url}'.format(url=self.session.tutor.appear)]]]
+        else:
+            self.command_handler(cmd=self.root.split('#')[-1])
+
+        self.response[0] = 'Session\nLanguage: {lng}\nInitialized: {active}\nTutor: {tutor}'. \
+                             format(lng=str(self.session.language),
+                                    active=str(self.session.is_active),
+                                    tutor=self.session.tutor)
 
 
 @method_decorator(csrf_exempt, name='dispatch')

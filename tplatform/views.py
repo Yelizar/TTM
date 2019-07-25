@@ -21,37 +21,7 @@ from tplatform.models import TelegramUser, TelegramSession, TelegramTest
 from tplatform.utilit import add_questions, HELLO_STRING
 
 
-def _notice_handler(data):
-    """
-    Function performs the role to switch True to 'ON' False to 'OFF'
-    :return: bool or str
-    """
-    if isinstance(data, bool):
-        return 'ON' if data is True else 'OFF'
-    else:
-        return True if data == 'on' else False
-
-
-def user_level(score):
-    """Checking user level"""
-    level = ""
-    if 0 <= score <= 15:
-        level = "Starter"
-    if 15 < score <= 35:
-        level = "Elementary"
-    if 35 < score <= 55:
-        level = "Pre-Intermediate"
-    if 55 < score <= 75:
-        level = "Intermediate"
-    if 75 < score <= 95:
-        level = "Upper Intermediate"
-    if score > 95:
-        level = "Advanced"
-    return level
-
-
-def _display_help():
-    return render_to_string('tplatform/help.md')
+TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
 
 
 def _display_sorry():
@@ -59,77 +29,8 @@ def _display_sorry():
                              "Please check available commands /help"
 
 
-def _display_details_updated():
-    return "Details Updated.\nOpen new menu /start"
-
-
-
-COMMANDS = {
-            '/start':               (_display_help, (('Placement', '*placement'),
-                                                     ('TalkToMe', '*talk_to_me'),
-                                                     ('TeachForUs', '*teach_for_us'))),
-            '/help':                (_display_help, (('Placement', '*placement'),
-                                                     ('TalkToMe', '*talk_to_me'),
-                                                     ('TeachForUs', '*teach_for_us'))),
-            '/_details_updated':                      (_display_details_updated, None),
-            '/_whaaaat?':                            (_display_sorry, None)
-        }
-
-# Callback for callbacks =)
-EDIT_MESSAGE_TEXT = {
-            '*connect':              ("You have been connect to session.\n"
-                                      "Please wait while the student confirms session with you.", None),
-            '*skip':                 ("Please wait next session", None),
-            '*reject':               ("Please wait next tutor", None),
-            '*root':                    (None, (('Placement', '*placement'),
-                                                ('TalkToMe', '*talk_to_me'),
-                                                ('TeachForUs', '*teach_for_us'))),
-
-            '*talk_to_me':              (None, (('Settings', '*s_settings'),
-                                                ('Session', '*s_session'))),
-            '*s_settings':              (None, (('Native Language', '*native_language'),
-                                                ('Learning Language', '*learning_language'))),
-            '*native_language':         ['Choose your native language', (('English', '_native_language#eng'),
-                                                                         ('Russian', '_native_language#rus'))],
-            '*learning_language':       ['Choose learning language', (('English', '_learning_language#eng'),
-                                                                      ('Russian', '_learning_language#rus'))],
-
-            '*s_session':               [None, None, ((('Initialize', '_init_session'),
-                                                       ('Cancel', '_cancel_session'),
-                                                       ('History', '_history_session')),
-                                                      {'session': ('is_active', True)})],
-            '*teach_for_us':            [None, None, ((('Apply', '_apply'),
-                                                      ('Notification', '*notification'),
-                                                      ('Settings', '*t_settings')),
-                                                      {'user': ('is_active', False)})],
-            '*notification':            [None, None, ((('On', '_notice_on'),
-                                                      ('Off', '_notice_off')),
-                                                      {'user': ('notice', False)})],
-
-            '*t_settings':              [None, (('Appear', '_appear#await'),
-                                                ('Phone', '_phone#await'),
-                                                ('CV', '_cv#await'),
-                                                ('Native Language', '*native_language'))],
-            '*placement':               ['Check your result', None, ((('Start Test', '*start_test'),
-                                                                      ('Continue test', '_continue_test'),
-                                                                      ('Check result', '_display_result')),
-                                                                     {'test': ('answers', 'In progress')})],
-            '*applied':                 ['You have been applied.\nThank you.', None],
-            '*start_test':              [HELLO_STRING, [['I am ready!', '*q1']]],
-            '*s_confirm_session':       ["Please confirm last session", (('Excellent', '_session_excellent'),
-                                                                         ('Nice', '_session_nice'),
-                                                                         ('Terrible', '_session_terrible'),
-                                                                         ('Canceled', '_s_session_canceled'))],
-            '*t_confirm_session':       ["Please confirm last session", (('Done', '_session_done'),
-                                                                         ('Canceled', '_t_session_canceled'))],
-}
-NEW_C, ANSWERS = add_questions()
-EDIT_MESSAGE_TEXT = {**EDIT_MESSAGE_TEXT, **NEW_C}
-pprint.pprint(EDIT_MESSAGE_TEXT)
-pprint.pprint(ANSWERS)
-
-
-TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
+def _display_help():
+    return render_to_string('tplatform/help.md')
 
 
 def _display_tutor_notice(session):
@@ -194,6 +95,67 @@ def notice_tutor(tutor):
 
 
 class TelegramRequest:
+    COMMANDS = {
+        '/start': (_display_help, (('Placement', '*placement'),
+                                   ('TalkToMe', '*talk_to_me'),
+                                   ('TeachForUs', '*teach_for_us'))),
+        '/help': (_display_help, (('Placement', '*placement'),
+                                  ('TalkToMe', '*talk_to_me'),
+                                  ('TeachForUs', '*teach_for_us'))),
+        '/_whaaaat?': (_display_sorry, None)
+    }
+
+    # Callback for callbacks =)
+    EXTERNAL_COMMANDS = {
+        '*connect': ("You have been connect to session.\n"
+                     "Please wait while the student confirms session with you.", None),
+        '*skip': ("Please wait next session", None),
+        '*reject': ("Please wait next tutor", None),
+        '*root': ("**TalkToMe**", (('Placement', '*placement'),
+                                   ('TalkToMe', '*talk_to_me'),
+                                   ('TeachForUs', '*teach_for_us'))),
+
+        '*talk_to_me': ("Student Profile", (('Settings', '*s_settings'),
+                                            ('Session', '*s_session'))),
+        '*s_settings': ['Student Settings', (('Native Language', '*native_language'),
+                                             ('Learning Language', '*learning_language'))],
+        '*native_language': ['Choose your native language', (('English', '_native_language#eng'),
+                                                             ('Russian', '_native_language#rus'))],
+        '*learning_language': ['Choose learning language', (('English', '_learning_language#eng'),
+                                                            ('Russian', '_learning_language#rus'))],
+
+        '*s_session': ['Session', None, ((('Initialize', '_init_session'),
+                                          ('Cancel', '_cancel_session'),
+                                          ('History', '_history_session')),
+                                         {'session': ('is_active', True)})],
+        '*teach_for_us': ["Tutor Profile", None, ((('Apply', '_apply'),
+                                                   ('Notification', '*notification'),
+                                                   ('Settings', '*t_settings')),
+                                                  {'user': ('is_active', False)})],
+        '*notification': ['Notification settings', None, ((('On', '_notice_on'),
+                                                           ('Off', '_notice_off')),
+                                                          {'user': ('notice', False)})],
+
+        '*t_settings': ['Tutor Settings', (('Appear', '_appear#await'),
+                                           ('Phone', '_phone#await'),
+                                           ('CV', '_cv#await'),
+                                           ('Native Language', '*native_language'))],
+        '*placement': ['Test', None, ((('Start Test', '*start_test'),
+                                       ('Continue test', '_continue_test'),
+                                       ('Check result', '_display_result')),
+                                      {'test': ('answers', 'In progress')})],
+        '*applied': ['You have been applied.\nThank you.', None],
+        '*start_test': [HELLO_STRING, [['I am ready!', '*q1']]],
+        '*s_confirm_session': ["Please confirm last session", (('Excellent', '_session_excellent'),
+                                                               ('Nice', '_session_nice'),
+                                                               ('Terrible', '_session_terrible'),
+                                                               ('Canceled', '_s_session_canceled'))],
+        '*t_confirm_session': ["Please confirm last session", (('Done', '_session_done'),
+                                                               ('Canceled', '_t_session_canceled'))],
+    }
+
+    NEW_C, ANSWERS = add_questions()
+    COMMANDS_SCOPE = {**EXTERNAL_COMMANDS, **NEW_C}
 
     def __init__(self, request):
         self.message_body = json.loads(request)
@@ -230,7 +192,6 @@ class TelegramRequest:
 
     def flavor(self):
         """
-        :param msg: dict - received from telegram user(unserialized data JSON -> dict)
         :return: str - message type.
         A message's flavor may be one of these:
 
@@ -254,11 +215,6 @@ class TelegramRequest:
                 return 'unrecognized'
 
     def get_user_credential(self):
-        """
-        :param msg: dict - received from telegram user(unserialized data JSON -> dict)
-        :param msg_type: read return: of flavor(msg)
-        :return:
-        """
         _chat = None
         if self.message_type == 'chat':
             if 'chat' in self.message_body['message']:
@@ -389,61 +345,25 @@ class TelegramRequest:
             if data == 'reject':
                 self.command_handler(cmd='*reject')
 
-    def result_counting(self, question_id, answer_id):
-        # before first question result should be 0
-        # else result from dict for current user
-        test, is_created = TelegramTest.objects.get_or_create(user=self.user)
-        test.current_question = question_id
-        _answers = json.dumps({question_id: answer_id})
-        if question_id == '1':
-            test.answers = json.dumps({"test": {question_id: answer_id}})
-            test.result = 'In progress'
-        else:
-            loaded_answer = json.loads(test.answers)
-            loaded_answer['test'].update({question_id: answer_id})
-            test.answers = json.dumps(loaded_answer)
-        if question_id == '120':
-            counter = 0
-            for item, value in loaded_answer['test'].items():
-                if ANSWERS[item] == value:
-                    counter += 1
-            result = user_level(score=counter)
-            test.result = result
-            cmd = '*placement'
-            self.root = 'back_to #*root#*placement'
-        else:
-            cmd = '*q{i}'.format(i=str(int(question_id) + 1))
-        test.save()
-        return cmd
-
-    def continue_test(self, param=None):
-        obj = TelegramTest.objects.get(user=self.user)
-        last_question = '*q{i}'.format(i=str(obj.current_question))
-        self.response = ('You have test in progress', [('I am ready!', last_question)])
-
     def command_handler(self, cmd):
-        """
-        :param cmd: str. It's a command(/) or internal command to change message(*) or text message (from user)
-        :return: tuple or None . It contains 3 params.
-        result[0] - function() which return always str
-        result[1] - None or InlineKeyboardMarkup()
-        result[2] - None or str 'tutor'/'student' to check access a user to a command
-        """
-        _blank = EDIT_MESSAGE_TEXT
+        _blank = self.COMMANDS_SCOPE
         if cmd[0] == '/':
-            _blank = COMMANDS
+            _blank = self.COMMANDS
         elif cmd[0] == '*':
             data = cmd.split('#')
             if len(data) == 2:
                 field, param = data
                 cmd = self.result_counting(question_id=field[2:], answer_id=param)
-        self.response = _blank.get(cmd.lower(), COMMANDS['/_whaaaat?'])
+        self.response = list(_blank.get(cmd.lower(), self.COMMANDS['/_whaaaat?']))
 
     def internal_command_handler(self, cmd):
         data = cmd.split('#')
         if len(data) == 1:
             func, param = self.internal_commands.get(cmd.lower(), None)
-            func(param)
+            if param is None:
+                func()
+            else:
+                func(param)
         elif len(data) == 2:
             field, param = data
             if param == 'await':
@@ -567,32 +487,30 @@ class TelegramRequest:
         try:
             if self.session is None:
                 self.session = TelegramSession.objects.active_session(self.user)
-            print(self.session)
             TelegramSession.objects.filter(
                 Q(student=self.user, is_active=True) |
                 Q(tutor=self.user, tutor_confirm=False)).update(**details)
             self.session.refresh_from_db()
-            print(self.session)
             self._display_session_details()
         except ValidationError:
             self.inline_message = "Unknown Error"
         except AttributeError:
             self.command_handler(cmd='/root')
 
-    def initialize_session(self, param=None):
+    def initialize_session(self):
         """
         :return: class TelegramSession and True if created() False if get()
         """
         self.session, is_created = TelegramSession.objects.get_or_create(student=self.user,
-                                                                language=self.user.learning_language,
-                                                                is_active=True)
+                                                                         language=self.user.learning_language,
+                                                                         is_active=True)
         if is_created:
             self._display_session_details()
 
     def update_handler(self, details):
         for name, val in details.items():
             if isinstance(val, bool):
-                val = _notice_handler(val).title()
+                val = self._notice_handler(val).title()
             name = name.title()
             self.inline_message = '{name}: {val}'.format(name=name, val=val)
 
@@ -601,8 +519,9 @@ class TelegramRequest:
             self.command_handler(cmd='*t_confirm_session')
         elif self.user.pk == self.session.student.pk and self.session.student_confirm is False:
             self.command_handler(cmd='*s_confirm_session')
+        self.response[0] = self.string_session_details()
 
-    def apply(self, param=None):
+    def apply(self):
         """send email and a message when tutor is applied"""
         if self.user.cv is not None and self.user.phone is not None and self.user.appear is not None:
             subject = 'New Tutor'
@@ -617,28 +536,75 @@ class TelegramRequest:
             self.inline_message = 'Please check your details!'
         self._display_user_details()
 
+    def result_counting(self, question_id, answer_id):
+        # before first question result should be 0
+        # else result from dict for current user
+        test, is_created = TelegramTest.objects.get_or_create(user=self.user)
+        test.current_question = question_id
+        _answers = json.dumps({question_id: answer_id})
+        if question_id == '1':
+            test.answers = json.dumps({"test": {question_id: answer_id}})
+            test.result = 'In progress'
+        else:
+            loaded_answer = json.loads(test.answers)
+            loaded_answer['test'].update({question_id: answer_id})
+            test.answers = json.dumps(loaded_answer)
+        if question_id == '120':
+            counter = 0
+            for item, value in loaded_answer['test'].items():
+                if self.ANSWERS[item] == value:
+                    counter += 1
+            result = self.user_level(score=counter)
+            test.result = result
+            cmd = '*placement'
+            self.root = 'back_to #*root#*placement'
+        else:
+            cmd = '*q{i}'.format(i=str(int(question_id) + 1))
+        test.save()
+        return cmd
+
+    def continue_test(self):
+        obj = TelegramTest.objects.get(user=self.user)
+        last_question = '*q{i}'.format(i=str(obj.current_question))
+        self.response = ('You have test in progress', [('I am ready!', last_question)])
+
+    def string_tutor_details(self):
+        cv = None
+        if self.user.cv:
+            cv = 'Uploaded'
+        details = 'Name: {name}\nNotification: {notice}\nNative language: {n_lng}\n' \
+                  'Appear: {appear}\nPhone: {phone}\nCV: {cv}'.format(
+                    name=self.user.name, notice=self._notice_handler(self.user.notice),
+                    n_lng=self.user.native_language, appear=self.user.appear,
+                    phone=self.user.phone, cv=cv)
+        return details
+
+    def string_student_details(self):
+        details = 'Name: {name}\nNative language: {n_lng}\nLearning Language: {l_lng}'.format(
+                    name=self.user.name, n_lng=self.user.native_language, l_lng=self.user.learning_language)
+        return details
+
+    def string_session_details(self):
+        details = 'Session\nLanguage: {lng}\nInitialized: {active}\nTutor: {tutor}'.format(
+                lng=str(self.session.language), active=str(self.session.is_active), tutor=self.session.tutor)
+        if self.session.is_going is True:
+            details += '\nStudent confirm: {s}\nTutor confirm: {t}'.format(
+                s=self.session.student_confirm, t=self.session.tutor_confirm)
+        return details
+
     def _display_user_details(self):
         self.message_id = cache.get(str('message_id_{}'.format(self.user.chat_id)))
         _cache = cache.get(str(self.user.chat_id))
         if self.message_id and _cache:
             self.command_handler(cmd='*t_settings')
             self.back = 'back_to #*root#*t_settings'
+            self.response[0] = self.string_tutor_details()
         else:
             self.command_handler(self.root.split('#')[-1])
-        cv = None
-        if self.user.cv:
-            cv = 'Uploaded'
-        self.response[0] = 'Name: {name}\n' \
-                           'Notification: {notice}\n' \
-                           'Native language: {lng}\n' \
-                           'Appear: {appear}\n' \
-                           'Phone: {phone}\n' \
-                           'CV: {cv}'.format(name=self.user.name,
-                                             notice=_notice_handler(self.user.notice),
-                                             lng=self.user.native_language,
-                                             appear=self.user.appear,
-                                             phone=self.user.phone,
-                                             cv=cv)
+            if self.root.split('#')[-2] == '*s_settings':
+                self.response[0] = self.string_student_details()
+            else:
+                self.response[0] = self.string_tutor_details()
 
     def _display_session_details(self):
         self.inline_message = 'Session Status has been changed'
@@ -646,14 +612,9 @@ class TelegramRequest:
             self.response = [None, [['Appear', '{url}'.format(url=self.session.tutor.appear)]]]
         else:
             self.command_handler(cmd=self.root.split('#')[-1])
-        self.response[0] = 'Session\n' \
-                           'Language: {lng}\n' \
-                           'Initialized: {active}\n' \
-                           'Tutor: {tutor}'.format(lng=str(self.session.language),
-                                                   active=str(self.session.is_active),
-                                                   tutor=self.session.tutor)
+        self.response[0] = self.string_session_details()
 
-    def _display_session_history(self, param=None):
+    def _display_session_history(self):
         history_queryset = TelegramSession.objects.get_history(self.user)
         history_list = str()
         for history in history_queryset:
@@ -664,7 +625,7 @@ class TelegramRequest:
         self.command_handler(cmd=self.root.split('#')[-1])
         self.response[0] = history_list
 
-    def _display_test_result(self, param=None):
+    def _display_test_result(self):
         test = TelegramTest.objects.get(user=self.user)
         self.command_handler(cmd='*placement')
         if test.result in ["Starter",
@@ -676,6 +637,35 @@ class TelegramRequest:
             self.response[0] = 'Your level is {level}'.format(level=test.result)
         else:
             self.response[0] = 'Please pass the test'
+
+    @staticmethod
+    def _notice_handler(data):
+        """
+        Function performs the role to switch True to 'ON' False to 'OFF'
+        :return: bool or str
+        """
+        if isinstance(data, bool):
+            return 'ON' if data is True else 'OFF'
+        else:
+            return True if data == 'on' else False
+
+    @staticmethod
+    def user_level(score):
+        """Checking user level"""
+        level = ""
+        if 0 <= score <= 15:
+            level = "Starter"
+        if 15 < score <= 35:
+            level = "Elementary"
+        if 35 < score <= 55:
+            level = "Pre-Intermediate"
+        if 55 < score <= 75:
+            level = "Intermediate"
+        if 75 < score <= 95:
+            level = "Upper Intermediate"
+        if score > 95:
+            level = "Advanced"
+        return level
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -693,7 +683,3 @@ class TelegramBotView(View):
                 return JsonResponse({}, status=200)
         except ValueError:
             return HttpResponseBadRequest('Invalid request body')
-
-
-
-

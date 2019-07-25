@@ -71,33 +71,16 @@ COMMANDS = {
             '/help':                (_display_help, (('Placement', '*placement'),
                                                      ('TalkToMe', '*talk_to_me'),
                                                      ('TeachForUs', '*teach_for_us'))),
-
-            # '/check_result':         (_display_test_result, None),
-            # Command which user are not allowed to be found
             '/_details_updated':                      (_display_details_updated, None),
             '/_whaaaat?':                            (_display_sorry, None)
         }
 
 # Callback for callbacks =)
 EDIT_MESSAGE_TEXT = {
-    """
-    #########################
-    #   *   |    Folder     #
-    #       |               #
-    #   _   |    Commands   #
-    #       |               #
-    #   #   |    Divider    #
-    #       |               #
-    # await |Wait an answer #
-    #########################
-    """     
-            '':                       (None, None),
             '*connect':              ("You have been connect to session.\n"
                                       "Please wait while the student confirms session with you.", None),
             '*skip':                 ("Please wait next session", None),
-            # '*confirm':              ["To start session follow the link ", None],
             '*reject':               ("Please wait next tutor", None),
-
             '*root':                    (None, (('Placement', '*placement'),
                                                 ('TalkToMe', '*talk_to_me'),
                                                 ('TeachForUs', '*teach_for_us'))),
@@ -107,39 +90,38 @@ EDIT_MESSAGE_TEXT = {
             '*s_settings':              (None, (('Native Language', '*native_language'),
                                                 ('Learning Language', '*learning_language'))),
             '*native_language':         ['Choose your native language', (('English', '_native_language#eng'),
-                                                ('Russian', '_native_language#rus'))],
+                                                                         ('Russian', '_native_language#rus'))],
             '*learning_language':       ['Choose learning language', (('English', '_learning_language#eng'),
-                                                ('Russian', '_learning_language#rus'))],
+                                                                      ('Russian', '_learning_language#rus'))],
 
             '*s_session':               [None, None, ((('Initialize', '_init_session'),
-                                                        ('Cancel', '_cancel_session'),
+                                                       ('Cancel', '_cancel_session'),
                                                        ('History', '_history_session')),
-                                                        {'session': ('is_active', True)})],
+                                                      {'session': ('is_active', True)})],
             '*teach_for_us':            [None, None, ((('Apply', '_apply'),
                                                       ('Notification', '*notification'),
-                                                        ('Settings', '*t_settings')),
-                                                        {'user': ('is_active', False)})],
+                                                      ('Settings', '*t_settings')),
+                                                      {'user': ('is_active', False)})],
             '*notification':            [None, None, ((('On', '_notice_on'),
                                                       ('Off', '_notice_off')),
-                                                        {'user': ('notice', False)})],
+                                                      {'user': ('notice', False)})],
 
             '*t_settings':              [None, (('Appear', '_appear#await'),
                                                 ('Phone', '_phone#await'),
                                                 ('CV', '_cv#await'),
                                                 ('Native Language', '*native_language'))],
-            '*placement':               [None, None, ((('Start Test', '*start_test'),
-                                                    ('Continue test', '*continue_test'),
-                                                    ('Check result', '/check_result')),
-                                                    {'test': ('answers', 'In progress')})],
+            '*placement':               ['Check your result', None, ((('Start Test', '*start_test'),
+                                                                      ('Continue test', '_continue_test'),
+                                                                      ('Check result', '_display_result')),
+                                                                     {'test': ('answers', 'In progress')})],
             '*applied':                 ['You have been applied.\nThank you.', None],
-            '*start_test':              (HELLO_STRING, (('I am ready!', '*q1'))),
+            '*start_test':              [HELLO_STRING, [['I am ready!', '*q1']]],
             '*s_confirm_session':       ["Please confirm last session", (('Excellent', '_session_excellent'),
-                                                ('Nice', '_session_nice'),
-                                                ('Terrible', '_session_terrible'),
-                                                ('Canceled', '_s_session_canceled'))],
+                                                                         ('Nice', '_session_nice'),
+                                                                         ('Terrible', '_session_terrible'),
+                                                                         ('Canceled', '_s_session_canceled'))],
             '*t_confirm_session':       ["Please confirm last session", (('Done', '_session_done'),
-                                                ('Canceled', '_t_session_canceled'))],
-            # '*continue_test':           ('You have test in progress', (('I am ready!', _continue_test))),
+                                                                         ('Canceled', '_t_session_canceled'))],
 }
 NEW_C, ANSWERS = add_questions()
 EDIT_MESSAGE_TEXT = {**EDIT_MESSAGE_TEXT, **NEW_C}
@@ -229,7 +211,9 @@ class TelegramRequest:
                                  '_notice_on':              (self.update_user_details, {'notice': True}),
                                  '_notice_off':             (self.update_user_details, {'notice': False}),
                                  '_apply':                  (self.apply, None),
+                                 '_continue_test':          (self.continue_test, None),
                                  '_history_session':        (self._display_session_history, None),
+                                 '_display_result':         (self._display_test_result, None),
                                  '_session_excellent':      (self.update_session, {'student_confirm': True, 'rate': 5,
                                                                                    'is_active': False, 'is_going': False}),
                                  '_session_nice':           (self.update_session, {'student_confirm': True, 'rate': 4,
@@ -411,14 +395,31 @@ class TelegramRequest:
         test, is_created = TelegramTest.objects.get_or_create(user=self.user)
         test.current_question = question_id
         _answers = json.dumps({question_id: answer_id})
-        if test.answers is None:
+        if question_id == '1':
             test.answers = json.dumps({"test": {question_id: answer_id}})
             test.result = 'In progress'
         else:
             loaded_answer = json.loads(test.answers)
             loaded_answer['test'].update({question_id: answer_id})
             test.answers = json.dumps(loaded_answer)
+        if question_id == '120':
+            counter = 0
+            for item, value in loaded_answer['test'].items():
+                if ANSWERS[item] == value:
+                    counter += 1
+            result = user_level(score=counter)
+            test.result = result
+            cmd = '*placement'
+            self.root = 'back_to #*root#*placement'
+        else:
+            cmd = '*q{i}'.format(i=str(int(question_id) + 1))
         test.save()
+        return cmd
+
+    def continue_test(self, param=None):
+        obj = TelegramTest.objects.get(user=self.user)
+        last_question = '*q{i}'.format(i=str(obj.current_question))
+        self.response = ('You have test in progress', [('I am ready!', last_question)])
 
     def command_handler(self, cmd):
         """
@@ -433,13 +434,9 @@ class TelegramRequest:
             _blank = COMMANDS
         elif cmd[0] == '*':
             data = cmd.split('#')
-            if len(data) == 3:
-                field, next_question, param = data
-                self.result_counting(question_id=field[2:], answer_id=param)
-                if next_question == '*q121':
-                    cmd = '*root'
-                else:
-                    cmd = next_question
+            if len(data) == 2:
+                field, param = data
+                cmd = self.result_counting(question_id=field[2:], answer_id=param)
         self.response = _blank.get(cmd.lower(), COMMANDS['/_whaaaat?'])
 
     def internal_command_handler(self, cmd):
@@ -469,12 +466,12 @@ class TelegramRequest:
             self.back = self.root
         else:
             data = data.split('#')
-            if len(data) == 3:
-                data = data[1]
+            if len(data) == 2:
+                data = data[0]
                 self.back = self.root + '#{line}'.format(line=data)
                 while len(self.back) > 64:  # Telegram API callback_data  1-64 bytes  | 1B = 1 character
                     self.back = self.back.split('#')
-                    del self.back[-5]
+                    del self.back[2]
                     self.back = '#'.join(self.back)
             else:
                 data = ''.join(data)
@@ -516,7 +513,7 @@ class TelegramRequest:
                 elif key == 'test':
                     try:
                         test = TelegramTest.objects.get(user=self.user)
-                        if test.result == value[0]:
+                        if value[1] == test.result:
                             index = 0
                         else:
                             index = 1
@@ -649,8 +646,6 @@ class TelegramRequest:
             self.response = [None, [['Appear', '{url}'.format(url=self.session.tutor.appear)]]]
         else:
             self.command_handler(cmd=self.root.split('#')[-1])
-        print(self.response)
-
         self.response[0] = 'Session\n' \
                            'Language: {lng}\n' \
                            'Initialized: {active}\n' \
@@ -668,6 +663,19 @@ class TelegramRequest:
                 tutor=history.tutor)
         self.command_handler(cmd=self.root.split('#')[-1])
         self.response[0] = history_list
+
+    def _display_test_result(self, param=None):
+        test = TelegramTest.objects.get(user=self.user)
+        self.command_handler(cmd='*placement')
+        if test.result in ["Starter",
+                           "Elementary",
+                           "Pre-Intermediate",
+                           "Intermediate",
+                           "Upper Intermediate",
+                           "Advanced"]:
+            self.response[0] = 'Your level is {level}'.format(level=test.result)
+        else:
+            self.response[0] = 'Please pass the test'
 
 
 @method_decorator(csrf_exempt, name='dispatch')

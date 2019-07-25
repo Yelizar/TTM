@@ -34,7 +34,6 @@ class TelegramUser(models.Model):
         return '{}'.format(self.name)
 
 
-
 class TelegramSession(models.Model):
     student = models.ForeignKey(TelegramUser, related_name='Student',
                                 on_delete=models.CASCADE,)

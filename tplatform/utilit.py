@@ -20,26 +20,15 @@ An oral placement test, designed to be used in conjunction with this test, is av
 Send your results to @talktome_agency and we will provide you with a native speaker for an online oral test."""
 
 
-
 def make_a_query(question):
     query = ['{id}. {question}'.format(id=question[0], question=question[1]["question"]),
-                 [(question[1]["A"],
-                   '*q{current}#*q{next}#{data}'.format(current=question[0],
-                                                                        next=int(question[0]) + 1,
-                                                                        data=question[1]["A"])),
-                  (question[1]["B"],
-                   '*q{current}#*q{next}#{data}'.format(current=question[0],
-                                                                        next=int(question[0]) + 1,
-                                                                        data=question[1]["B"])),
-                  (question[1]["C"],
-                   '*q{current}#*q{next}#{data}'.format(current=question[0],
-                                                                        next=int(question[0]) + 1,
-                                                                        data=question[1]["C"]))]]
+                 [('a. ' + question[1]["A"], '*q{current}#{data}'.format(current=question[0], data=question[1]["A"])),
+                  ('b. ' + question[1]["B"], '*q{current}#{data}'.format(current=question[0], data=question[1]["B"])),
+                  ('c. ' + question[1]["C"], '*q{current}#{data}'.format(current=question[0], data=question[1]["C"]))]]
     if len(question[1]) == 6:
-        query[1].append((question[1]["D"],
-                   '*q{current}#*q{next}#{data}'.format(current=question[0],
-                                                                        next=int(question[0]) + 1,
-                                                                        data=question[1]["D"])))
+        query[1].append(
+            ('d. ' + question[1]["D"], '*q{current}#{data}'.format(current=question[0], data=question[1]["D"]))
+        )
     return tuple(query)
 
 
@@ -48,7 +37,7 @@ def add_questions():
     # dictionary with data for quiz from JSON file
     with open(os.path.dirname(__file__)+"/quiz.json", "r") as read_file:
         quiz = json.load(read_file)
-    #editing each question from quiz dictionary
+    # editing each question from quiz dictionary
     edited_questions = {}
     answers = {}
     for question in quiz['questions'].items():

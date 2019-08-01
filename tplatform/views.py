@@ -19,6 +19,10 @@ from django.db.models import Q
 
 from tplatform.models import TelegramUser, TelegramSession, TelegramTest
 from tplatform.utilit import add_questions, HELLO_STRING
+from telepot.namedtuple import LabeledPrice, ShippingOption
+from telepot.delegate import (
+    per_invoice_payload, pave_event_space, create_open,
+    per_message, call)
 
 
 TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
@@ -94,6 +98,19 @@ def notice_tutor(tutor):
                             )]]))
 
 
+class OrderProcessor(telepot.helper.InvoiceHandler):
+    def __init__(self, *args, **kwargs):
+        super(OrderProcessor, self).__init__(*args, **kwargs)
+
+    def on_pre_checkout_query(self, msg):
+        query_id, from_id, invoice_payload = telepot.glance(msg, flavor='pre_checkout_query')
+
+        print('Pre-Checkout query:')
+        pprint.pprint(msg)
+
+        TelePot.answerPreCheckoutQuery(query_id, True)
+
+
 class TelegramRequest:
     COMMANDS = {
         '/start': (_display_help, (('Placement', '*placement'),
@@ -111,12 +128,16 @@ class TelegramRequest:
                      "Please wait while the student confirms session with you.", None),
         '*skip': ("Please wait next session", None),
         '*reject': ("Please wait next tutor", None),
-        '*root': ("**TalkToMe**", (('Placement', '*placement'),
+        '*root': ("™️", (('Placement', '*placement'),
                                    ('TalkToMe', '*talk_to_me'),
                                    ('TeachForUs', '*teach_for_us'))),
 
-        '*talk_to_me': ("Student Profile", (('Settings', '*s_settings'),
-                                            ('Session', '*s_session'))),
+        '*talk_to_me': ("👨‍🎓Student Profile", (('Settings', '*s_settings'),
+                                            ('Session', '*s_session'),
+                                            ('Payment', '*payment'))),
+        '*payment': ("Choose package", (('1 Session', '_invoice#1'),
+                                        ('5 Sessions', '_invoice#2'),
+                                        ('10 Sessions', '_invoice#3'))),
         '*s_settings': ['Student Settings', (('Native Language', '*native_language'),
                                              ('Learning Language', '*learning_language'))],
         '*native_language': ['Choose your native language', (('English', '_native_language#eng'),
@@ -184,7 +205,7 @@ class TelegramRequest:
                                                                                    'is_active': False, 'is_going': False}),
                                  '_session_done':           (self.update_session, {'tutor_confirm': True}),
                                  '_t_session_canceled':     (self.update_session, {'tutor_confirm': True, 'rate': 0}),
-                                 '_s_session_canceled':     (self.update_session, {'tutor_confirm': True, 'rate': 0,
+                                 '_s_session_canceled':     (self.update_session, {'student_confirm': True, 'rate': 0,
                                                                                    'is_active': False, 'is_going': False})
                                 }
         pprint.pprint(self.message_body)  # Print to check request
@@ -366,7 +387,9 @@ class TelegramRequest:
                 func(param)
         elif len(data) == 2:
             field, param = data
-            if param == 'await':
+            if field[1:] == 'invoice':
+                self.invoice(param)
+            elif param == 'await':
                 cache.set('{chat_id}'.format(chat_id=self.user.chat_id),
                           '{field}'.format(field=field[1:]), 90)
                 self.command_handler(cmd=self.root.split('#')[-1])
@@ -411,8 +434,8 @@ class TelegramRequest:
             else:
                 _button_set.append([(InlineKeyboardButton(text=text, callback_data=data))])
         if self.back:
-            _button_set.insert(0, [(InlineKeyboardButton(text='Back', callback_data=self.back))])
-            _button_set.append([(InlineKeyboardButton(text='On Top', callback_data='on_top'))])
+            _button_set.insert(0, [(InlineKeyboardButton(text='◀️ Back', callback_data=self.back))])
+            _button_set.append([(InlineKeyboardButton(text='🔼 On Top', callback_data='on_top'))])
         return InlineKeyboardMarkup(inline_keyboard=_button_set)
 
     def replaceable_button(self, buttons, condition):
@@ -626,17 +649,44 @@ class TelegramRequest:
         self.response[0] = history_list
 
     def _display_test_result(self):
-        test = TelegramTest.objects.get(user=self.user)
         self.command_handler(cmd='*placement')
-        if test.result in ["Starter",
-                           "Elementary",
-                           "Pre-Intermediate",
-                           "Intermediate",
-                           "Upper Intermediate",
-                           "Advanced"]:
-            self.response[0] = 'Your level is {level}'.format(level=test.result)
-        else:
+        try:
+            test = TelegramTest.objects.get(user=self.user)
+            if test.result in ["Starter",
+                               "Elementary",
+                               "Pre-Intermediate",
+                               "Intermediate",
+                               "Upper Intermediate",
+                               "Advanced"]:
+                self.response[0] = 'Your level is {level}'.format(level=test.result)
+            else:
+                self.response[0] = 'Please pass the test'
+        except TelegramTest.DoesNotExist:
             self.response[0] = 'Please pass the test'
+
+    def invoice(self, package):
+        """
+        :param package: 1 = 1 session 2 = 5 sessions 3 = 10 sessions
+        :return:
+        """
+        self.response = ['Invoice sent', None]
+        if package == '1':
+            amount = 990
+            label = '1 session'
+        elif package == '2':
+            amount = 4999
+            label = '5 sessions'
+        elif package == '3':
+            amount = 9999
+            label = '10 sessions'
+        TelePot.sendInvoice(
+            self.user.chat_id, "Buy coins", "1 coin = 1 session",
+            payload='@rangit0t0@',
+            provider_token=settings.PAYMENT_PROVIDER_TOKEN,
+            start_parameter='test-parameter',
+            currency='NZD', prices=[
+                LabeledPrice(label=label, amount=amount)])  # required for shipping query
+
 
     @staticmethod
     def _notice_handler(data):

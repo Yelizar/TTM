@@ -76,3 +76,24 @@ class TelegramTest(models.Model):
     def __str__(self):
         return '{}'.format(self.user.name)
 
+
+class Payloads(models.Model):
+    name = models.CharField(max_length=64, help_text='Name of purchase')
+    label = models.CharField(max_length=64, help_text='Purchase text on button')
+    amount = models.IntegerField(help_text='$9.90 = 990, $49.99 = 4999')
+
+    is_active = models.BooleanField(default=True)
+
+    created = models.DateTimeField(auto_now=False, auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True, auto_now_add=False)
+
+
+class Payments(models.Model):
+    user = models.ForeignKey(TelegramUser, on_delete=models.CASCADE)
+    currency = models.CharField(max_length=4)
+    payload = models.CharField(max_length=64, help_text='Name of purchase')
+    provider = models.TextField(help_text='Provider payment charger id')
+    total = models.FloatField(help_text='Total price')
+
+    created = models.DateTimeField(auto_now=False, auto_now_add=True)
+

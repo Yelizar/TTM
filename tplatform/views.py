@@ -17,9 +17,9 @@ from django.views.generic import View
 from telepot.namedtuple import InlineKeyboardButton, InlineKeyboardMarkup
 from django.db.models import Q
 
-from tplatform.models import TelegramUser, TelegramSession, TelegramTest
+from tplatform.models import TelegramUser, TelegramSession, TelegramTest, Payloads, Payments
 from tplatform.utilit import add_questions, HELLO_STRING
-from telepot.namedtuple import LabeledPrice, ShippingOption
+from telepot.namedtuple import LabeledPrice
 from telepot.delegate import (
     per_invoice_payload, pave_event_space, create_open,
     per_message, call)
@@ -98,19 +98,6 @@ def notice_tutor(tutor):
                             )]]))
 
 
-class OrderProcessor(telepot.helper.InvoiceHandler):
-    def __init__(self, *args, **kwargs):
-        super(OrderProcessor, self).__init__(*args, **kwargs)
-
-    def on_pre_checkout_query(self, msg):
-        query_id, from_id, invoice_payload = telepot.glance(msg, flavor='pre_checkout_query')
-
-        print('Pre-Checkout query:')
-        pprint.pprint(msg)
-
-        TelePot.answerPreCheckoutQuery(query_id, True)
-
-
 class TelegramRequest:
     COMMANDS = {
         '/start': (_display_help, (('Placement', '*placement'),
@@ -135,9 +122,9 @@ class TelegramRequest:
         '*talk_to_me': ("👨‍🎓Student Profile", (('Settings', '*s_settings'),
                                             ('Session', '*s_session'),
                                             ('Payment', '*payment'))),
-        '*payment': ("Choose package", (('1 Session', '_invoice#1'),
-                                        ('5 Sessions', '_invoice#2'),
-                                        ('10 Sessions', '_invoice#3'))),
+        '*payment': ("Choose package", (('1 Session', '_invoice#1_session'),
+                                        ('5 Sessions', '_invoice#5_sessions'),
+                                        ('10 Sessions', '_invoice#10_sessions'))),
         '*s_settings': ['Student Settings', (('Native Language', '*native_language'),
                                              ('Learning Language', '*learning_language'))],
         '*native_language': ['Choose your native language', (('English', '_native_language#eng'),
@@ -180,6 +167,7 @@ class TelegramRequest:
 
     def __init__(self, request):
         self.message_body = json.loads(request)
+        pprint.pprint(self.message_body)  # Print to check request
         self.message_type = self.flavor()
         self.user = self.get_user()
         self.session = None
@@ -208,7 +196,6 @@ class TelegramRequest:
                                  '_s_session_canceled':     (self.update_session, {'student_confirm': True, 'rate': 0,
                                                                                    'is_active': False, 'is_going': False})
                                 }
-        pprint.pprint(self.message_body)  # Print to check request
         self.fork()
 
     def flavor(self):
@@ -232,6 +219,8 @@ class TelegramRequest:
                 return 'chat'
             elif 'edited_message' in self.message_body:
                 return 'edited_message'
+            elif 'pre_checkout_query' in self.message_body:
+                return 'pre_checkout_query'
             else:
                 return 'unrecognized'
 
@@ -246,14 +235,15 @@ class TelegramRequest:
         elif self.message_type == 'edited_message':
             if 'chat' in self.message_body['edited_message']:
                 _chat = self.message_body['edited_message']['chat']
+        elif self.message_type == 'pre_checkout_query':
+            _chat = self.message_body['pre_checkout_query']['from']
         ###################### should be rewoked #########################
         elif self.message_type == 'unrecognized':
             return None, None, None
         ##################################################################
         name = _chat['first_name']
         chat_id = _chat['id']
-        chat_type = _chat['type']
-        return name, chat_id, chat_type
+        return name, chat_id
 
     def fork(self):
         if self.message_type == 'chat':
@@ -265,6 +255,9 @@ class TelegramRequest:
             self.callback_handler(callback)
             self.back_handler(data=callback['data'])
             return True if self.callback_response(callback) else False
+        elif self.message_type == 'pre_checkout_query':
+            checkout = self.message_body['pre_checkout_query']
+            self.pre_checkout_query_handler(checkout)
 
     def chat_response(self):
         reply_markup = None
@@ -325,7 +318,15 @@ class TelegramRequest:
                 self.update_user_cv(file_path=destination, file_name=document['file_name'])
             else:
                 self.command_handler(cmd='/_whaaaat?')
+        elif content_type == 'successful_payment':
+            self.command_handler(cmd='/start')
+            self.save_payment(message['successful_payment'])
         cache.delete(str(self.user.chat_id))
+
+    @staticmethod
+    def pre_checkout_query_handler(checkout):
+        query_id = checkout['id']
+        TelePot.answerPreCheckoutQuery(query_id, True)
 
     def callback_handler(self, callback):
         try:
@@ -484,10 +485,9 @@ class TelegramRequest:
             self.inline_message = "Details hasn't been updated"
 
     def get_user(self):
-        first_name, chat_id, chat_type = self.get_user_credential()
+        first_name, chat_id = self.get_user_credential()
         user, is_created = TelegramUser.objects.get_or_create(chat_id=chat_id,
-                                                              name=first_name,
-                                                              chat_type=chat_type)
+                                                              name=first_name)
         if is_created:
             TelePot.sendMessage(user.chat_id, 'Hi {username}'.format(username=user.name))
         return user
@@ -637,6 +637,9 @@ class TelegramRequest:
             self.command_handler(cmd=self.root.split('#')[-1])
         self.response[0] = self.string_session_details()
 
+    def _display_successful_payment(self):
+        return "Available sessions: {}".format('5')
+
     def _display_session_history(self):
         history_queryset = TelegramSession.objects.get_history(self.user)
         history_list = str()
@@ -669,24 +672,25 @@ class TelegramRequest:
         :param package: 1 = 1 session 2 = 5 sessions 3 = 10 sessions
         :return:
         """
-        self.response = ['Invoice sent', None]
-        if package == '1':
-            amount = 990
-            label = '1 session'
-        elif package == '2':
-            amount = 4999
-            label = '5 sessions'
-        elif package == '3':
-            amount = 9999
-            label = '10 sessions'
-        TelePot.sendInvoice(
-            self.user.chat_id, "Buy coins", "1 coin = 1 session",
-            payload='@rangit0t0@',
-            provider_token=settings.PAYMENT_PROVIDER_TOKEN,
-            start_parameter='test-parameter',
-            currency='NZD', prices=[
-                LabeledPrice(label=label, amount=amount)])  # required for shipping query
+        payloads = Payloads.objects.get(name=package)
+        if TelePot.sendInvoice(
+                self.user.chat_id, "Buy coins", "1 coin = 1 session",
+                payload=payloads.name,
+                provider_token=settings.PAYMENT_PROVIDER_TOKEN,
+                start_parameter='test-parameter',
+                currency='NZD', prices=[
+                    LabeledPrice(label=payloads.label, amount=payloads.amount)]): # required for shipping query
+            self.response = ['Invoice sent', None]
+        else:
+            self.response = ['Sorry, payment system is currently not working', None]
 
+    def save_payment(self, invoice):
+        Payments.objects.create(user=self.user,
+                                currency=invoice['currency'],
+                                payload=invoice['invoice_payload'],
+                                provider=invoice['provider_payment_charge_id'],
+                                total=invoice['total_amount'])
+        self.response[0] = self._display_successful_payment
 
     @staticmethod
     def _notice_handler(data):

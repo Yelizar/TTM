@@ -3,7 +3,7 @@ from api.serializers import UserSerializer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 import json
-from .models import ChannelRoom, ChannelNames, CommunicationMethodNumber, Session, SessionCoins
+from .models import ChannelRoom, ChannelNames, Session, SessionCoins
 
 
 class SessionConsumer(AsyncWebsocketConsumer):
@@ -141,10 +141,10 @@ class SessionConsumer(AsyncWebsocketConsumer):
         """Delete ChannelNames Object.delete()"""
         return ChannelNames.objects.disable(channel_id=channel_id)
 
-    @database_sync_to_async
-    def get_tutor_number(self, tutor_id, com_method='Appear'):
-        """Get Number or URl to contact tutor Object.get()"""
-        return CommunicationMethodNumber.objects.get_number(user_id=tutor_id, communication_method=com_method)[0]
+    # @database_sync_to_async
+    # def get_tutor_number(self, tutor_id, com_method='Appear'):
+    #     """Get Number or URl to contact tutor Object.get()"""
+    #     return CommunicationMethodNumber.objects.get_number(user_id=tutor_id, communication_method=com_method)[0]
 
     @database_sync_to_async
     def take_coin(self, user_id):

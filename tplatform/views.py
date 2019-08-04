@@ -17,12 +17,11 @@ from django.views.generic import View
 from telepot.namedtuple import InlineKeyboardButton, InlineKeyboardMarkup
 from django.db.models import Q
 
-from tplatform.models import TelegramUser, TelegramSession, TelegramTest, Payloads, Payments
+from tplatform.models import TelegramUser, TelegramTest, Payloads, Payments
 from tplatform.utilit import add_questions, HELLO_STRING
+from website.access.models import Account
+from website.session.models import Session
 from telepot.namedtuple import LabeledPrice
-from telepot.delegate import (
-    per_invoice_payload, pave_event_space, create_open,
-    per_message, call)
 
 
 TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
@@ -139,7 +138,7 @@ class TelegramRequest:
         '*teach_for_us': ["Tutor Profile", None, ((('Apply', '_apply'),
                                                    ('Notification', '*notification'),
                                                    ('Settings', '*t_settings')),
-                                                  {'user': ('is_active', False)})],
+                                                  {'user': ('is_status', False)})],
         '*notification': ['Notification settings', None, ((('On', '_notice_on'),
                                                            ('Off', '_notice_off')),
                                                           {'user': ('notice', False)})],
@@ -264,11 +263,11 @@ class TelegramRequest:
         if self.response[1]:
             reply_markup = self.make_inline_keyboard()
         if self.message_id:
-            TelePot.editMessageText((self.user.chat_id, self.message_id), text=self.response[0], reply_markup=reply_markup)
+            TelePot.editMessageText((self.user.telegram_user.chat_id, self.message_id), text=self.response[0], reply_markup=reply_markup)
         else:
-            _message = TelePot.sendMessage(self.user.chat_id, self.response[0](), reply_markup=reply_markup)
+            _message = TelePot.sendMessage(self.user.telegram_user.chat_id, self.response[0](), reply_markup=reply_markup)
             self.message_id = _message['message_id']
-            cache.set('message_id_{chat_id}'.format(chat_id=self.user.chat_id),
+            cache.set('message_id_{chat_id}'.format(chat_id=self.user.telegram_user.chat_id),
                       '{message_id}'.format(message_id=self.message_id), 3600)
 
     def callback_response(self, callback):
@@ -289,7 +288,7 @@ class TelegramRequest:
                 self.inline_message = self.response[0]
         elif isinstance(self.response[0], types.FunctionType):
             # send a message below inline buttons
-            TelePot.sendMessage(self.user.chat_id,
+            TelePot.sendMessage(self.user.telegram_user.chat_id,
                                            text=self.response[0]())
         elif reply_markup:
             # send a key board to user
@@ -302,7 +301,7 @@ class TelegramRequest:
 
     def chat_handler(self, message):
         content_type = telepot.glance(message, self.message_type)[0]
-        _cache = cache.get(str(self.user.chat_id))
+        _cache = cache.get(str(self.user.telegram_user.chat_id))
         if content_type == 'text':
             text = message['text']
             if _cache:
@@ -321,7 +320,7 @@ class TelegramRequest:
         elif content_type == 'successful_payment':
             self.command_handler(cmd='/start')
             self.save_payment(message['successful_payment'])
-        cache.delete(str(self.user.chat_id))
+        cache.delete(str(self.user.telegram_user.chat_id))
 
     @staticmethod
     def pre_checkout_query_handler(checkout):
@@ -346,7 +345,7 @@ class TelegramRequest:
         elif data == 'on_top':
             self.command_handler(cmd='*root')
             self.root = 'back_to #*root'
-        self.session = TelegramSession.objects.get_last_session(self.user)
+        self.session = Session.objects.get_last_session(self.user)
         if self.session:
             self.session_confirmation_handler()
         if data in ['connect', 'skip'] or 'connect' in data:
@@ -391,7 +390,7 @@ class TelegramRequest:
             if field[1:] == 'invoice':
                 self.invoice(param)
             elif param == 'await':
-                cache.set('{chat_id}'.format(chat_id=self.user.chat_id),
+                cache.set('{chat_id}'.format(chat_id=self.user.telegram_user.chat_id),
                           '{field}'.format(field=field[1:]), 90)
                 self.command_handler(cmd=self.root.split('#')[-1])
                 verb = 'type'
@@ -478,7 +477,7 @@ class TelegramRequest:
 
     def update_user_details(self, details):
         try:
-            if TelegramUser.objects.filter(pk=self.user.pk).update(**details):
+            if Account.objects.filter(pk=self.user.pk).update(**details):
                 self.user.refresh_from_db()
                 self._display_user_details()
         except ValidationError:
@@ -486,10 +485,12 @@ class TelegramRequest:
 
     def get_user(self):
         first_name, chat_id = self.get_user_credential()
-        user, is_created = TelegramUser.objects.get_or_create(chat_id=chat_id,
+        telegram_user, is_created = TelegramUser.objects.get_or_create(chat_id=chat_id,
                                                               name=first_name)
         if is_created:
-            TelePot.sendMessage(user.chat_id, 'Hi {username}'.format(username=user.name))
+            TelePot.sendMessage(telegram_user.chat_id, 'Hi {username}'.format(username=telegram_user.name))
+        user, _ = Account.objects.get_or_create(telegram_user=telegram_user)
+        print(user)
         return user
 
     def get_session(self, details):
@@ -498,8 +499,8 @@ class TelegramRequest:
         :return:
         """
         try:
-            self.session = TelegramSession.objects.get(**details)
-        except TelegramSession.DoesNotExist:
+            self.session = Session.objects.get(**details)
+        except Session.DoesNotExist:
             self.session = None
 
     def update_session(self, details):
@@ -509,8 +510,8 @@ class TelegramRequest:
         """
         try:
             if self.session is None:
-                self.session = TelegramSession.objects.active_session(self.user)
-            TelegramSession.objects.filter(
+                self.session = Session.objects.active_session(self.user)
+            Session.objects.filter(
                 Q(student=self.user, is_active=True) |
                 Q(tutor=self.user, tutor_confirm=False)).update(**details)
             self.session.refresh_from_db()
@@ -522,9 +523,9 @@ class TelegramRequest:
 
     def initialize_session(self):
         """
-        :return: class TelegramSession and True if created() False if get()
+        :return: class Session and True if created() False if get()
         """
-        self.session, is_created = TelegramSession.objects.get_or_create(student=self.user,
+        self.session, is_created = Session.objects.get_or_create(student=self.user,
                                                                          language=self.user.learning_language,
                                                                          is_active=True)
         if is_created:
@@ -548,8 +549,8 @@ class TelegramRequest:
         """send email and a message when tutor is applied"""
         if self.user.cv is not None and self.user.phone is not None and self.user.appear is not None:
             subject = 'New Tutor'
-            message = 'Hi Admin, {name} applied as a tutor. Chat ID - {chat_id}'.format(name=self.user.name,
-                                                                                        chat_id=self.user.chat_id)
+            message = 'Hi Admin, {name} applied as a tutor. Chat ID - {chat_id}'.format(name=self.user.telegram_user.name,
+                                                                                        chat_id=self.user.telegram_user.chat_id)
             email_from = settings.EMAIL_HOST_USER
             recipient_list = [settings.EMAIL_FOR_NOTIFICATION]
             send_mail(subject, message, email_from, recipient_list)
@@ -597,14 +598,14 @@ class TelegramRequest:
             cv = 'Uploaded'
         details = 'Name: {name}\nNotification: {notice}\nNative language: {n_lng}\n' \
                   'Appear: {appear}\nPhone: {phone}\nCV: {cv}'.format(
-                    name=self.user.name, notice=self._notice_handler(self.user.notice),
+                    name=self.user.telegram_user.name, notice=self._notice_handler(self.user.notice),
                     n_lng=self.user.native_language, appear=self.user.appear,
                     phone=self.user.phone, cv=cv)
         return details
 
     def string_student_details(self):
         details = 'Name: {name}\nNative language: {n_lng}\nLearning Language: {l_lng}'.format(
-                    name=self.user.name, n_lng=self.user.native_language, l_lng=self.user.learning_language)
+                    name=self.user.telegram_user.name, n_lng=self.user.native_language, l_lng=self.user.learning_language)
         return details
 
     def string_session_details(self):
@@ -616,8 +617,8 @@ class TelegramRequest:
         return details
 
     def _display_user_details(self):
-        self.message_id = cache.get(str('message_id_{}'.format(self.user.chat_id)))
-        _cache = cache.get(str(self.user.chat_id))
+        self.message_id = cache.get(str('message_id_{}'.format(self.user.telegram_user.chat_id)))
+        _cache = cache.get(str(self.user.telegram_user.chat_id))
         if self.message_id and _cache:
             self.command_handler(cmd='*t_settings')
             self.back = 'back_to #*root#*t_settings'
@@ -641,7 +642,7 @@ class TelegramRequest:
         return "Available sessions: {}".format('5')
 
     def _display_session_history(self):
-        history_queryset = TelegramSession.objects.get_history(self.user)
+        history_queryset = Session.objects.get_history(self.user)
         history_list = str()
         for history in history_queryset:
             history_list += "ID:{pk} | Rate:{rate} | Tutor:{tutor}\n".format(
@@ -674,7 +675,7 @@ class TelegramRequest:
         """
         payloads = Payloads.objects.get(name=package)
         if TelePot.sendInvoice(
-                self.user.chat_id, "Buy coins", "1 coin = 1 session",
+                self.user.telegram_user.chat_id, "Buy coins", "1 coin = 1 session",
                 payload=payloads.name,
                 provider_token=settings.PAYMENT_PROVIDER_TOKEN,
                 start_parameter='test-parameter',

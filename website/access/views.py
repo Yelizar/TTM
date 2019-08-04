@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, reverse, HttpResponse
 from django.views import View
 from django.contrib.auth import authenticate, login, logout
-from .models import TutorDetails, TutorStatus, StudentDetails
+
 from .forms import *
 
 
@@ -51,42 +51,6 @@ class RegistrationPart2View(View):
                 user.save()
             except CustomUser.DoesNotExist:
                 return redirect('access:registration1')
-        return redirect('access:registration3')
-
-
-class RegistrationPart3View(View):
-    template_name = 'website/access/registration_part_3.html'
-
-    def get(self, request, *args, **kwargs):
-        try:
-            user = CustomUser.objects.get(pk=request.user.id)
-            if not user.first_name:
-                return redirect('access:registration2')
-            if user.role:
-                return redirect('access:home')
-        except CustomUser.DoesNotExist:
-            return redirect('access:registration')
-        template = self.template_name
-        form = RegistrationPart3Form()
-        return render(request, template, locals())
-
-    def post(self, request, *args, **kwargs):
-        template = self.template_name
-        form = RegistrationPart3Form(request.POST)
-        if form.is_valid():
-            try:
-                user = CustomUser.objects.get(pk=request.user.id)
-                user.role = form.cleaned_data.get('role')
-                user.save()
-                if user.role == 'Tutor':
-                    TutorStatus.objects.get_or_create(user_id=user.id)
-                    obj, created = TutorDetails.objects.get_or_create(user_id=user.id)
-                    return redirect(reverse('session:update-tutor-details', kwargs={'pk': obj.user_id}))
-                elif user.role == 'Student':
-                    StudentDetails.objects.get_or_create(user_id=user.id)
-                return redirect('access:home')
-            except CustomUser.DoesNotExist:
-                print("Error")
         return redirect('access:registration3')
 
 

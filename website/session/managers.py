@@ -72,15 +72,6 @@ class ChannelNamesManager(models.Manager):
         return False
 
 
-class CommunicationMethodNumberManager(models.Manager):
-
-    def get_number(self, user_id, communication_method):
-        obj = self.get(user_id=user_id, com_method__method=communication_method, is_active=True)
-        if obj:
-            return obj.number, False
-        return False
-
-
 class SessionCoinsManager(models.Manager):
 
     def coin_operations(self, user_id, operation=None, quantity=1):
@@ -100,10 +91,22 @@ class SessionCoinsManager(models.Manager):
 
 class SessionManager(models.Manager):
 
-    def get_last_session(self, current_user):
-        obj_set = self.filter(Q(student_id=current_user.id, is_going=True)
-                        | Q(tutor_id=current_user.id, is_going=True))
+    def active_session(self, current_user):
+        obj_set = self.filter(Q(student_id=current_user.id, is_active=True)
+                              | Q(tutor_id=current_user.id, tutor_confirm=False))
         if obj_set:
             return obj_set.first()
         return None
+
+    def get_last_session(self, current_user):
+        obj_set = self.filter(Q(student_id=current_user.id, is_going=True, student_confirm=False)
+                        | Q(tutor_id=current_user.id, tutor_confirm=False))
+        if obj_set:
+            return obj_set.first()
+        return None
+
+    def get_history(self, current_user):
+        obj_set = self.filter(Q(student_id=current_user.id)
+                        | Q(tutor_id=current_user.id))
+        return obj_set
 

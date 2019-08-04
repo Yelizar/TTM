@@ -32,43 +32,6 @@ class ProfileDetailsView(LoginRequiredMixin, View):
         return render(request, self.template_name, locals())
 
 
-class TutorDetailsUpdateView(UpdateView):
-    model = TutorDetails
-    fields = ['languages', 'dob', 'phone_number', 'short_resume', 'cv']
-    template_name = 'website/session/update_details.html'
-
-    def get_success_url(self):
-        return reverse('session:profile', kwargs={'pk': self.object.user_id})
-
-
-# class StudentDetailsUpdateView(UpdateView):
-#     model = StudentDetails
-#     fields = ['languages', 'communication_methods']
-#     template_name = 'website/session/update_details.html'
-#
-#     def get_success_url(self):
-#         return reverse('session:profile', kwargs={'pk': self.object.user_id})
-
-
-class CommunicationMethodNumberCreateView(CreateView):
-    template_name = 'website/session/add_com_number.html'
-    model = CommunicationMethodNumber
-    fields = ['number']
-
-    def form_valid(self, form):
-        try:
-            CommunicationMethodNumber.objects.get(user=self.request.user)
-            return redirect(reverse('session:profile', kwargs={'pk': self.request.user.id}))
-        except CommunicationMethodNumber.DoesNotExist:
-            form.instance.user = self.request.user
-            # Temporarily function is limited. Access is allowed only to Appear.in
-            form.instance.com_method = CommunicationMethods.objects.get(id=4)
-            return super(CommunicationMethodNumberCreateView, self).form_valid(form)
-
-    def get_success_url(self):
-        return reverse('session:profile', kwargs={'pk': self.object.user_id})
-
-
 class SessionInitialization(View):
     template_name = 'website/session/session_initialization.html'
 

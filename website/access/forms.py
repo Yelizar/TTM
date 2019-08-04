@@ -18,12 +18,6 @@ class RegistrationPart2Form(forms.Form):
     last_name = forms.CharField(help_text='Please type your last name', max_length=150)
 
 
-class RegistrationPart3Form(forms.ModelForm):
-
-    class Meta:
-        model = CustomUser
-        fields = ['role']
-
 
 class LoginForm(forms.ModelForm):
     password = forms.CharField(label=_("Password"), strip=False, widget=forms.PasswordInput)

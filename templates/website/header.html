@@ -1,6 +1,35 @@
 {% load static %}
-<div class="landing-header">
+<div id="header">
+    <div id="logo">
+        <a href="{% url 'access:home' %}"><img src="{% static 'images/logo.png' %}" alt="LOGO"></a>
+    </div>
+    <form action="index.html" method="post" class="searchbar">
+        <input type="text" value="Search" onFocus="this.select();" onMouseUp="return false;">
+        <input type="submit" value="Go">
+    </form>
+    <ul id="navigation">
+        <li>
+            <a href="{% url 'access:home' %}">Home</a>
+        </li>
+        {% if request.user.is_authenticated %}
+            <li>
+                <a href="{% url 'session:profile' request.user.id %}">Profile</a>
+            </li>
+            <li>
+                <a href="{% url 'access:logout' %}"> Logout </a>
+            </li>
+        {% else %}
+            <li>
+                <a href="{% url 'access:login' %}">Login</a>
+            </li>
+            <li>
+                <a href="{% url 'access:registration' %}">Registration</a>
+            </li>
+        {% endif %}
+
+    </ul>
 </div>
+
 
 
 

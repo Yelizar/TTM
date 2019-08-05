@@ -2,6 +2,14 @@
 {% block titel %} Sign Up 2{% endblock %}
 
 {% block content %}
+    <div>
+        <form class="access-form" method="POST" action="{% url 'access:registration2' %}">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="primaryAction" type="submit">Next Step</button>
+        </form>
+    </div>
+    <div class="section">
         {% if user.is_authenticated %}
             <p>Hi {{ user.username }}.</p>
             <p>It's second step of registration</p>
@@ -12,11 +20,5 @@
             Logout </a></button>
         </div>
     {% endif %}
-    <div class="in-form">
-        <form class="access-form" method="POST" action="{% url 'access:registration2' %}">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button class="primaryAction" type="submit">Next Step</button>
-        </form>
     </div>
 {% endblock %}

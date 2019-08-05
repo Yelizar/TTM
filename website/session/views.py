@@ -18,17 +18,11 @@ class ProfileDetailsView(LoginRequiredMixin, View):
     now = timezone.now()
 
     def get(self, request, *args, **kwargs):
-        object = CustomUser.objects.get(id=kwargs['pk'])
-        if request.user.id != object.id:
-            request.session['tutor_pk'] = object.id
-        now = self.now
+        obj = Account.objects.get(user_id=kwargs['pk'])
         return render(request, self.template_name, locals())
 
     def post(self, request, *args, **kwargs):
-        object = CustomUser.objects.get(id=kwargs['pk'])
-        now = timezone.now()
-        if 'tutor_status' in request.POST:
-            request.user.tutorstatus.tutor_status()
+        obj = Account.objects.get(id=kwargs['pk'])
         return render(request, self.template_name, locals())
 
 
@@ -37,9 +31,10 @@ class SessionInitialization(View):
 
     @never_cache
     def get(self, request, *args, **kwargs):
-        object = CustomUser.objects.get(username=kwargs['session_name'])
-        if object != request.user:
-            list_tutors = get_object_or_404(ChannelRoom, student_id=object.id, is_active=True)
+        obj = Account.objects.get(user__username=kwargs['session_name'])
+        print(obj)
+        if obj.user != request.user:
+            list_tutors = get_object_or_404(ChannelRoom, student_id=obj.id, is_active=True)
         session_name_json = mark_safe(json.dumps(kwargs['session_name']))
         return render(request, self.template_name, locals())
 

@@ -1,4 +1,4 @@
-from django.contrib.auth import get_user_model
+from website.access.models import Account
 from django.db import models
 from django.db.models import Q
 from django.db import DataError
@@ -10,38 +10,35 @@ class ChannelRoomManager(models.Manager):
     """
 
     def get_or_new(self, username):
-        user = get_user_model().objects.get(username=username)
-        if user.role == 'Student':
-            room = self.filter(student__username=user.username, is_active=True)
-            if room:
-                return room.first(), False
-            else:
-                obj = self.model(student=user, is_active=True)
-                obj.save()
-                return obj, True
-        return None, False
+        account = Account.objects.get(user__username=username)
+        room = self.filter(student__username=account.user.username, is_active=True)
+        if room:
+            return room.first(), False
+        else:
+            obj = self.model(student=account.user, is_active=True)
+            obj.save()
+            return obj, True
 
     def add_visitor(self, username, room):
-        user = get_user_model().objects.get(username=username)
-        if user.role == 'Tutor':
-            obj = self.get(id=room.id)
-            if obj:
-                obj.tutor.add(user)
-                obj.save()
-                return True
-
-        return False
+        account = Account.objects.get(user__username=username)
+        obj = self.get(id=room.id)
+        if obj:
+            obj.tutor.add(account)
+            obj.save()
+            return True
+        else:
+            return False
 
     def remove_visitor(self, username, room):
-        user = get_user_model().objects.get(username=username)
-        if user.role == 'Tutor':
-            obj = self.get(id=room.id)
-            if obj:
-                obj.tutor.remove(user)
-                obj.save()
-                return True
+        account = Account.objects.get(user__username=username)
+        obj = self.get(id=room.id)
+        if obj:
+            obj.tutor.remove(account)
+            obj.save()
+            return True
+        else:
+            return False
 
-        return False
 
     def close(self, room):
         obj = self.filter(id=room.id, is_active=True)

@@ -4,6 +4,7 @@ from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 import json
 from .models import ChannelRoom, ChannelNames, Session, SessionCoins
+from website.access.models import Account
 
 
 class SessionConsumer(AsyncWebsocketConsumer):
@@ -104,7 +105,7 @@ class SessionConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_user_obj(self, username):
         """Get User Object <CustomUserModel>"""
-        return get_user_model().objects.get(username=username)
+        return Account.objects.get(user__username=username)
 
     @database_sync_to_async
     def get_channel_room(self):

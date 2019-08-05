@@ -38,12 +38,12 @@ def _display_help():
 
 def _display_tutor_notice(session):
     return render_to_string('tplatform/tutor_notice.md').\
-        format(name=session.student.name, language=session.language)
+        format(name=session.student.telegram_user.name, language=session.language)
 
 
 def _display_student_notice(user_info):
     return render_to_string('tplatform/student_notice.md'). \
-        format(name=user_info.name, language=user_info.native_language)
+        format(name=user_info.telegram_user.name, language=user_info.native_language)
 
 
 def notice_tutors(session):
@@ -54,30 +54,30 @@ def notice_tutors(session):
     Connect - contain session id.
     Skip - remove keyboard
     """
-    tutor_list = TelegramUser.objects.filter(notice=True, native_language=session.language)
+    tutor_list = Account.objects.filter(notice=True, native_language=session.language)
     for tutor in tutor_list:
-        TelePot.sendMessage(tutor.chat_id, _display_tutor_notice(session),
+        TelePot.sendMessage(tutor.telegram_user.chat_id, _display_tutor_notice(session),
                             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                                 [InlineKeyboardButton(
                                     text='Connect',
-                                    callback_data='connect {student_chat}'.format(student_chat=session.student.chat_id))],
+                                    callback_data='connect {student_chat}'.format(student_chat=session.student.telegram_user.chat_id))],
                                 [InlineKeyboardButton(
                                     text='Skip',
                                     callback_data='skip')]]))
 
 
-def notice_student(student_chat, user):
+def notice_student(student_chat, account):
     """
     :param student_chat: str TelegramUser.object.chat_id
     :param user: class TelegramUser(). Tutor instance who has been sent your details to student
     :return:
     Send notification to a student from tutor.
     """
-    TelePot.sendMessage(student_chat, _display_student_notice(user),
+    TelePot.sendMessage(student_chat, _display_student_notice(account),
                         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                             [InlineKeyboardButton(
                                 text='Confirm',
-                                callback_data='confirm {chat_id}'.format(chat_id=user.chat_id),
+                                callback_data='confirm {chat_id}'.format(chat_id=account.telegram_user.chat_id),
                                 )],
                             [InlineKeyboardButton(
                                 text='Reject',
@@ -89,7 +89,7 @@ def notice_tutor(tutor):
     :param tutor: class TelegramUser()
     Send notification to a tutor who has been chosen by student
     """
-    TelePot.sendMessage(tutor.chat_id, "The student has chosen you, please go to your channel",
+    TelePot.sendMessage(tutor.telegram_user.chat_id, "The student has chosen you, please go to your channel",
                         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                             [InlineKeyboardButton(
                                 text='Appear',
@@ -351,14 +351,14 @@ class TelegramRequest:
         if data in ['connect', 'skip'] or 'connect' in data:
             if 'connect' in data:
                 student_chat_id = data.split(" ")[1]
-                notice_student(student_chat=student_chat_id, user=self.user)
+                notice_student(student_chat=student_chat_id, account=self.user)
                 self.command_handler(cmd='*connect')
             elif data == 'skip':
                 self.command_handler(cmd='*skip')
         elif data in ['confirm', 'reject'] or 'confirm' in data:
             if 'confirm' in data:
                 tutor_chat_id = data.split(" ")[1]
-                tutor = TelegramUser.objects.get(chat_id=tutor_chat_id)
+                tutor = Account.objects.get(telegram_user__chat_id=tutor_chat_id)
                 tutor.notice = False
                 tutor.save()
                 notice_tutor(tutor=tutor)
@@ -455,7 +455,7 @@ class TelegramRequest:
                         index = 0
                 elif key == 'test':
                     try:
-                        test = TelegramTest.objects.get(user=self.user)
+                        test = TelegramTest.objects.get(user=self.user.telegram_user)
                         if value[1] == test.result:
                             index = 0
                         else:
@@ -563,7 +563,7 @@ class TelegramRequest:
     def result_counting(self, question_id, answer_id):
         # before first question result should be 0
         # else result from dict for current user
-        test, is_created = TelegramTest.objects.get_or_create(user=self.user)
+        test, is_created = TelegramTest.objects.get_or_create(user=self.user.telegram_user)
         test.current_question = question_id
         _answers = json.dumps({question_id: answer_id})
         if question_id == '1':
@@ -588,7 +588,7 @@ class TelegramRequest:
         return cmd
 
     def continue_test(self):
-        obj = TelegramTest.objects.get(user=self.user)
+        obj = TelegramTest.objects.get(user=self.user.telegram_user)
         last_question = '*q{i}'.format(i=str(obj.current_question))
         self.response = ('You have test in progress', [('I am ready!', last_question)])
 
@@ -655,7 +655,7 @@ class TelegramRequest:
     def _display_test_result(self):
         self.command_handler(cmd='*placement')
         try:
-            test = TelegramTest.objects.get(user=self.user)
+            test = TelegramTest.objects.get(user=self.user.telegram_user)
             if test.result in ["Starter",
                                "Elementary",
                                "Pre-Intermediate",

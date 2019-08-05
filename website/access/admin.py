@@ -4,30 +4,6 @@ from .models import *
 from django.utils.translation import gettext, gettext_lazy as _
 
 
-class TutorDetailsAdmin(admin.ModelAdmin):
-    fieldsets = (
-        (None, {'fields': ('user',)}),
-        (_('Details'), {'fields': ('phone_number', 'dob', 'cv', 'short_resume', 'languages', 'is_active')}),
-    )
-    list_display = ('user', 'is_active',)
-
-
-class TutorStatusAdmin(admin.ModelAdmin):
-    fieldsets = (
-        (None, {'fields': ('user',)}),
-        (None, {'fields': ('is_active',)}),
-    )
-    list_display = ('user', 'is_active',)
-
-
-class StudentDetailsAdmin(admin.ModelAdmin):
-    fieldsets = (
-        (None, {'fields': ('user',)}),
-        (_('Details'), {'fields': ('languages', 'is_active')}),
-    )
-    list_display = ('user', 'is_active',)
-
-
 class CustomUserAdmin(UserAdmin):
     fieldsets = (
         (None, {'fields': ('username', 'password')}),

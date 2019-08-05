@@ -7,21 +7,13 @@
         <table>
             <tr>
                 <td>
-                    <label id="id_student_name">Student: {{ object.get_full_name }}</label>
+                    <label id="id_student_name">Student: {{ obj.user.get_full_name }}</label>
                 </td>
             </tr>
             <tr>
                 <td>
-                    <label id="id_student_language">Language: {{ object.studentdetails.languages }}</label>
+                    <label id="id_student_language">Language: {{ obj.native_language }}</label>
                 </td>
-            </tr>
-            <tr>
-                <td><label id="id_student_method">Method: </label></td>
-                {% for method in object.studentdetails.communication_methods.all %}
-                    <td><input type="radio" id="communication_method_{{ method }}" name="communication_method"
-                               class="method"
-                               value="{{ method }}">{{ method }}</td>
-                {% endfor %}
             </tr>
         </table>
     </div>
@@ -52,6 +44,7 @@
         if (window.location.protocol === 'https:') {
             wsProtocol = 'wss://'
         }
+        console.log(sessionName);
         var sessionSocket = new WebSocket(
             wsProtocol + window.location.host +
             '/ws/session-initialization/' + sessionName + '/');

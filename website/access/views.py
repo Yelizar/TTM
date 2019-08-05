@@ -2,13 +2,14 @@ from django.shortcuts import render, redirect, reverse, HttpResponse
 from django.views import View
 from django.contrib.auth import authenticate, login, logout
 
+from .models import Account
 from .forms import *
 
 
 class RegistrationView(View):
     template_name = 'website/access/registration_part_1.html'
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request):
         template = self.template_name
         form = RegistrationForm()
         return render(request, template, locals())
@@ -23,8 +24,9 @@ class RegistrationView(View):
             user = authenticate(username=username, password=password)
 
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-
-        return redirect('access:registration2')
+            Account.objects.create(user=user)
+            return redirect('access:registration2')
+        return render(request, template, locals())
 
 
 class RegistrationPart2View(View):
@@ -51,7 +53,8 @@ class RegistrationPart2View(View):
                 user.save()
             except CustomUser.DoesNotExist:
                 return redirect('access:registration1')
-        return redirect('access:registration3')
+            return redirect(reverse('session:profile', kwargs={'pk': user.id}))
+        return render(request, template, locals())
 
 
 class LoginView(View):
@@ -70,10 +73,6 @@ class LoginView(View):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            # if user.first_name:
-            #     redirect('access:registration2')
-            # elif not user.role:
-            #     redirect('access:registration3')
             return redirect(reverse('session:profile', kwargs={'pk': user.id}))
         return render(request, template, locals())
 

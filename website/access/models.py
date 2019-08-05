@@ -63,6 +63,5 @@ class Account(models.Model):
         else:
             return '{}'.format(self.telegram_user)
 
-
     def cv_name(self):
         return os.path.basename(self.cv.name)

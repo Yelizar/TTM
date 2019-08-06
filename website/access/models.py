@@ -38,17 +38,17 @@ def tutor_directory_path(instance, filename):
 
 
 class Account(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, null=True)
-    telegram_user = models.OneToOneField(TelegramUser, on_delete=models.CASCADE, null=True)
+    website = models.OneToOneField(CustomUser, on_delete=models.CASCADE, null=True)
+    telegram = models.OneToOneField(TelegramUser, on_delete=models.CASCADE, null=True)
     native_language = models.CharField(max_length=64, blank=True, null=True)
     learning_language = models.CharField(max_length=64, blank=True, null=True)
-    appear = models.CharField(max_length=64, blank=True, null=True)
+    appear = models.CharField(max_length=64, blank=True, null=True, help_text='https://appear.in/Your_channel')
     notice = models.BooleanField(default=False)
-    phone = models.CharField(max_length=17, blank=True, null=True)
+    phone = models.CharField(max_length=17, blank=True, null=True, help_text='+642049998877')
     dob = models.DateField('Date of birthday', auto_now=False, auto_now_add=False, blank=True, null=True)
-    cv = models.FileField(upload_to=tutor_directory_path, blank=True, null=True)
+    cv = models.FileField(upload_to=tutor_directory_path, blank=True, null=True, help_text='.txt')
 
-    is_status = models.BooleanField(default=False)
+    is_tutor = models.BooleanField(default=False)
 
     created = models.DateTimeField(auto_now=False, auto_now_add=True)
     updated = models.DateTimeField(auto_now=True, auto_now_add=False)
@@ -58,10 +58,10 @@ class Account(models.Model):
         verbose_name_plural = 'Accounts details'
 
     def __str__(self):
-        if self.user:
-            return '{}'.format(self.user)
+        if self.website:
+            return '{}'.format(self.website)
         else:
-            return '{}'.format(self.telegram_user)
+            return '{}'.format(self.telegram)
 
     def cv_name(self):
         return os.path.basename(self.cv.name)

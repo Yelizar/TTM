@@ -22,6 +22,7 @@ from tplatform.utilit import add_questions, HELLO_STRING
 from website.access.models import Account
 from website.session.models import Session
 from telepot.namedtuple import LabeledPrice
+from notifications.signals import notify
 
 
 TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
@@ -38,12 +39,12 @@ def _display_help():
 
 def _display_tutor_notice(session):
     return render_to_string('tplatform/tutor_notice.md').\
-        format(name=session.student.telegram_user.name, language=session.language)
+        format(name=session.student, language=session.language)
 
 
 def _display_student_notice(user_info):
     return render_to_string('tplatform/student_notice.md'). \
-        format(name=user_info.telegram_user.name, language=user_info.native_language)
+        format(name=user_info.telegram.name, language=user_info.native_language)
 
 
 def notice_tutors(session):
@@ -55,12 +56,16 @@ def notice_tutors(session):
     Skip - remove keyboard
     """
     tutor_list = Account.objects.filter(notice=True, native_language=session.language)
+    if session.student.telegram:
+        callback_data = session.student.telegram.chat_id
+    else:
+        callback_data = session.student.website.id
     for tutor in tutor_list:
-        TelePot.sendMessage(tutor.telegram_user.chat_id, _display_tutor_notice(session),
+        TelePot.sendMessage(tutor.telegram.chat_id, _display_tutor_notice(session),
                             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                                 [InlineKeyboardButton(
                                     text='Connect',
-                                    callback_data='connect {student_chat}'.format(student_chat=session.student.telegram_user.chat_id))],
+                                    callback_data='connect {student_chat}'.format(student_chat=callback_data))],
                                 [InlineKeyboardButton(
                                     text='Skip',
                                     callback_data='skip')]]))
@@ -77,7 +82,7 @@ def notice_student(student_chat, account):
                         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                             [InlineKeyboardButton(
                                 text='Confirm',
-                                callback_data='confirm {chat_id}'.format(chat_id=account.telegram_user.chat_id),
+                                callback_data='confirm {chat_id}'.format(chat_id=account.telegram.chat_id),
                                 )],
                             [InlineKeyboardButton(
                                 text='Reject',
@@ -89,7 +94,7 @@ def notice_tutor(tutor):
     :param tutor: class TelegramUser()
     Send notification to a tutor who has been chosen by student
     """
-    TelePot.sendMessage(tutor.telegram_user.chat_id, "The student has chosen you, please go to your channel",
+    TelePot.sendMessage(tutor.telegram.chat_id, "The student has chosen you, please go to your channel",
                         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                             [InlineKeyboardButton(
                                 text='Appear',
@@ -138,7 +143,7 @@ class TelegramRequest:
         '*teach_for_us': ["Tutor Profile", None, ((('Apply', '_apply'),
                                                    ('Notification', '*notification'),
                                                    ('Settings', '*t_settings')),
-                                                  {'user': ('is_status', False)})],
+                                                  {'user': ('is_tutor', False)})],
         '*notification': ['Notification settings', None, ((('On', '_notice_on'),
                                                            ('Off', '_notice_off')),
                                                           {'user': ('notice', False)})],
@@ -263,11 +268,11 @@ class TelegramRequest:
         if self.response[1]:
             reply_markup = self.make_inline_keyboard()
         if self.message_id:
-            TelePot.editMessageText((self.user.telegram_user.chat_id, self.message_id), text=self.response[0], reply_markup=reply_markup)
+            TelePot.editMessageText((self.user.telegram.chat_id, self.message_id), text=self.response[0], reply_markup=reply_markup)
         else:
-            _message = TelePot.sendMessage(self.user.telegram_user.chat_id, self.response[0](), reply_markup=reply_markup)
+            _message = TelePot.sendMessage(self.user.telegram.chat_id, self.response[0](), reply_markup=reply_markup)
             self.message_id = _message['message_id']
-            cache.set('message_id_{chat_id}'.format(chat_id=self.user.telegram_user.chat_id),
+            cache.set('message_id_{chat_id}'.format(chat_id=self.user.telegram.chat_id),
                       '{message_id}'.format(message_id=self.message_id), 3600)
 
     def callback_response(self, callback):
@@ -288,7 +293,7 @@ class TelegramRequest:
                 self.inline_message = self.response[0]
         elif isinstance(self.response[0], types.FunctionType):
             # send a message below inline buttons
-            TelePot.sendMessage(self.user.telegram_user.chat_id,
+            TelePot.sendMessage(self.user.telegram.chat_id,
                                            text=self.response[0]())
         elif reply_markup:
             # send a key board to user
@@ -301,7 +306,7 @@ class TelegramRequest:
 
     def chat_handler(self, message):
         content_type = telepot.glance(message, self.message_type)[0]
-        _cache = cache.get(str(self.user.telegram_user.chat_id))
+        _cache = cache.get(str(self.user.telegram.chat_id))
         if content_type == 'text':
             text = message['text']
             if _cache:
@@ -320,7 +325,7 @@ class TelegramRequest:
         elif content_type == 'successful_payment':
             self.command_handler(cmd='/start')
             self.save_payment(message['successful_payment'])
-        cache.delete(str(self.user.telegram_user.chat_id))
+        cache.delete(str(self.user.telegram.chat_id))
 
     @staticmethod
     def pre_checkout_query_handler(checkout):
@@ -350,15 +355,20 @@ class TelegramRequest:
             self.session_confirmation_handler()
         if data in ['connect', 'skip'] or 'connect' in data:
             if 'connect' in data:
-                student_chat_id = data.split(" ")[1]
-                notice_student(student_chat=student_chat_id, account=self.user)
+                student_id = data.split(" ")[1]
+                try:
+                    notice_student(student_chat=student_id, account=self.user)
+                except TelegramUser.DoesNotExist:
+                    student = Account.objects.get(website_id=student_id)
+                    notify.send(sender=self.user, recipient=student, verb='New session\n',
+                                description='URL', )
                 self.command_handler(cmd='*connect')
             elif data == 'skip':
                 self.command_handler(cmd='*skip')
         elif data in ['confirm', 'reject'] or 'confirm' in data:
             if 'confirm' in data:
                 tutor_chat_id = data.split(" ")[1]
-                tutor = Account.objects.get(telegram_user__chat_id=tutor_chat_id)
+                tutor = Account.objects.get(telegram__chat_id=tutor_chat_id)
                 tutor.notice = False
                 tutor.save()
                 notice_tutor(tutor=tutor)
@@ -390,7 +400,7 @@ class TelegramRequest:
             if field[1:] == 'invoice':
                 self.invoice(param)
             elif param == 'await':
-                cache.set('{chat_id}'.format(chat_id=self.user.telegram_user.chat_id),
+                cache.set('{chat_id}'.format(chat_id=self.user.telegram.chat_id),
                           '{field}'.format(field=field[1:]), 90)
                 self.command_handler(cmd=self.root.split('#')[-1])
                 verb = 'type'
@@ -455,7 +465,7 @@ class TelegramRequest:
                         index = 0
                 elif key == 'test':
                     try:
-                        test = TelegramTest.objects.get(user=self.user.telegram_user)
+                        test = TelegramTest.objects.get(user=self.user.telegram)
                         if value[1] == test.result:
                             index = 0
                         else:
@@ -489,8 +499,7 @@ class TelegramRequest:
                                                               name=first_name)
         if is_created:
             TelePot.sendMessage(telegram_user.chat_id, 'Hi {username}'.format(username=telegram_user.name))
-        user, _ = Account.objects.get_or_create(telegram_user=telegram_user)
-        print(user)
+        user, _ = Account.objects.get_or_create(telegram=telegram_user)
         return user
 
     def get_session(self, details):
@@ -549,8 +558,8 @@ class TelegramRequest:
         """send email and a message when tutor is applied"""
         if self.user.cv is not None and self.user.phone is not None and self.user.appear is not None:
             subject = 'New Tutor'
-            message = 'Hi Admin, {name} applied as a tutor. Chat ID - {chat_id}'.format(name=self.user.telegram_user.name,
-                                                                                        chat_id=self.user.telegram_user.chat_id)
+            message = 'Hi Admin, {name} applied as a tutor. Chat ID - {chat_id}'.format(name=self.user.telegram.name,
+                                                                                        chat_id=self.user.telegram.chat_id)
             email_from = settings.EMAIL_HOST_USER
             recipient_list = [settings.EMAIL_FOR_NOTIFICATION]
             send_mail(subject, message, email_from, recipient_list)
@@ -563,7 +572,7 @@ class TelegramRequest:
     def result_counting(self, question_id, answer_id):
         # before first question result should be 0
         # else result from dict for current user
-        test, is_created = TelegramTest.objects.get_or_create(user=self.user.telegram_user)
+        test, is_created = TelegramTest.objects.get_or_create(user=self.user.telegram)
         test.current_question = question_id
         _answers = json.dumps({question_id: answer_id})
         if question_id == '1':
@@ -588,7 +597,7 @@ class TelegramRequest:
         return cmd
 
     def continue_test(self):
-        obj = TelegramTest.objects.get(user=self.user.telegram_user)
+        obj = TelegramTest.objects.get(user=self.user.telegram)
         last_question = '*q{i}'.format(i=str(obj.current_question))
         self.response = ('You have test in progress', [('I am ready!', last_question)])
 
@@ -598,14 +607,14 @@ class TelegramRequest:
             cv = 'Uploaded'
         details = 'Name: {name}\nNotification: {notice}\nNative language: {n_lng}\n' \
                   'Appear: {appear}\nPhone: {phone}\nCV: {cv}'.format(
-                    name=self.user.telegram_user.name, notice=self._notice_handler(self.user.notice),
+                    name=self.user.telegram.name, notice=self._notice_handler(self.user.notice),
                     n_lng=self.user.native_language, appear=self.user.appear,
                     phone=self.user.phone, cv=cv)
         return details
 
     def string_student_details(self):
         details = 'Name: {name}\nNative language: {n_lng}\nLearning Language: {l_lng}'.format(
-                    name=self.user.telegram_user.name, n_lng=self.user.native_language, l_lng=self.user.learning_language)
+                    name=self.user.telegram.name, n_lng=self.user.native_language, l_lng=self.user.learning_language)
         return details
 
     def string_session_details(self):
@@ -617,8 +626,8 @@ class TelegramRequest:
         return details
 
     def _display_user_details(self):
-        self.message_id = cache.get(str('message_id_{}'.format(self.user.telegram_user.chat_id)))
-        _cache = cache.get(str(self.user.telegram_user.chat_id))
+        self.message_id = cache.get(str('message_id_{}'.format(self.user.telegram.chat_id)))
+        _cache = cache.get(str(self.user.telegram.chat_id))
         if self.message_id and _cache:
             self.command_handler(cmd='*t_settings')
             self.back = 'back_to #*root#*t_settings'
@@ -655,7 +664,7 @@ class TelegramRequest:
     def _display_test_result(self):
         self.command_handler(cmd='*placement')
         try:
-            test = TelegramTest.objects.get(user=self.user.telegram_user)
+            test = TelegramTest.objects.get(user=self.user.telegram)
             if test.result in ["Starter",
                                "Elementary",
                                "Pre-Intermediate",
@@ -675,7 +684,7 @@ class TelegramRequest:
         """
         payloads = Payloads.objects.get(name=package)
         if TelePot.sendInvoice(
-                self.user.telegram_user.chat_id, "Buy coins", "1 coin = 1 session",
+                self.user.telegram.chat_id, "Buy coins", "1 coin = 1 session",
                 payload=payloads.name,
                 provider_token=settings.PAYMENT_PROVIDER_TOKEN,
                 start_parameter='test-parameter',

@@ -1,8 +1,6 @@
 from django.shortcuts import render, redirect, reverse, HttpResponse
 from django.views import View
 from django.contrib.auth import authenticate, login, logout
-
-from .models import Account
 from .forms import *
 
 
@@ -10,12 +8,10 @@ class RegistrationView(View):
     template_name = 'website/access/registration_part_1.html'
 
     def get(self, request):
-        template = self.template_name
         form = RegistrationForm()
-        return render(request, template, locals())
+        return render(request, self.template_name, locals())
 
     def post(self, request, *args, **kwargs):
-        template = self.template_name
         form = RegistrationForm(request.POST)
         if form.is_valid():
             form.save(commit=True)
@@ -24,9 +20,9 @@ class RegistrationView(View):
             user = authenticate(username=username, password=password)
 
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-            Account.objects.create(user=user)
+            Account.objects.create(website=user)
             return redirect('access:registration2')
-        return render(request, template, locals())
+        return render(request, self.template_name, locals())
 
 
 class RegistrationPart2View(View):
@@ -37,12 +33,10 @@ class RegistrationPart2View(View):
             user = CustomUser.objects.get(pk=request.user.id)
         except CustomUser.DoesNotExist:
             return redirect('access:registration')
-        template = self.template_name
         form = RegistrationPart2Form()
-        return render(request, template, locals())
+        return render(request, self.template_name, locals())
 
     def post(self, request, *args, **kwargs):
-        template = self.template_name
         form = RegistrationPart2Form(request.POST)
 
         if form.is_valid():
@@ -54,27 +48,25 @@ class RegistrationPart2View(View):
             except CustomUser.DoesNotExist:
                 return redirect('access:registration1')
             return redirect(reverse('session:profile', kwargs={'pk': user.id}))
-        return render(request, template, locals())
+        return render(request, self.template_name, locals())
 
 
 class LoginView(View):
     template_name = 'website/access/login.html'
 
     def get(self, request, *args, **kwargs):
-        template = self.template_name
         form = LoginForm()
-        return render(request, template, locals())
+        return render(request, self.template_name, locals())
 
     def post(self, request, *args, **kwargs):
         form = LoginForm(request.POST)
-        template = self.template_name
         username = request.POST.get('username')
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
             return redirect(reverse('session:profile', kwargs={'pk': user.id}))
-        return render(request, template, locals())
+        return render(request, self.template_name, locals())
 
 
 def logout_view(request):
@@ -89,3 +81,20 @@ class HomeView(View):
     def get(self, request, *args, **kwargs):
         template = self.template_name
         return render(request, template, locals())
+
+
+class Application(View):
+    template_name = 'website/access/application.html'
+
+    def get(self, request):
+        form = ApplicationFrom()
+        return render(request, self.template_name, locals())
+
+    def post(self, request, *args, **kwargs):
+        instance = Account.objects.get(website=request.user)
+        form = ApplicationFrom(request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            return redirect('access:home')
+        return render(request, self.template_name, locals())
+

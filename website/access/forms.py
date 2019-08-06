@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
-from .models import CustomUser
+from .models import CustomUser, Account
 
 
 class RegistrationForm(UserCreationForm):
@@ -44,3 +44,16 @@ class LoginForm(forms.ModelForm):
         except CustomUser.DoesNotExist:
             raise forms.ValidationError("User does not exist")
         return username
+
+
+LANGUAGE = (('eng', 'English'),
+            ('rus', 'Russian'))
+
+
+class ApplicationFrom(forms.ModelForm):
+    native_language = forms.ChoiceField(choices=LANGUAGE, widget=forms.Select())
+
+    class Meta:
+        model = Account
+        fields = ['native_language', 'appear', 'phone', 'cv']
+

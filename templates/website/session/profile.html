@@ -4,44 +4,32 @@
 {% block titel %} Profile {% endblock %}
 {% block content %}
     <h1>Profile</h1>
-    {% if request.user.id == obj.user.id %}
+    {% if request.user.id == obj.website.id %}
         <div class="section">
             <p class="column2">
-            General Profile details<br>
-                Username: {{ obj.user.username }}<br>
-                First Name: {{ obj.user.first_name }}<br>
-                Last Name: {{ obj.user.last_name }}<br>
-                Email: {{ obj.user.email }}<br>
+                General Profile details<br>
+                Username: {{ obj.website.username }}<br>
+                First Name: {{ obj.website.first_name }}<br>
+                Last Name: {{ obj.website.last_name }}<br>
+                Email: {{ obj.website.email }}<br>
             </p>
             <p class="column2">
                 Balance:{{ obj.sessioncoins.coins }}<br>
-                CV: {{ obj.cv_name }}<br>
-                Native language: {{ obj.native_language }}<br>
-                Phone: {{ obj.tutordetails.phone_number }}<br>
-                {% if obj.notice %}
-                {% live_notify_badge %}
-                {% live_notify_list %}
-                    {%endif  %}
-
-                        {% if obj.user.online %}Online
-                    {% else %} Offline | {{ obj.user.last_seen|timesince }} ago{% endif %}
-
+                {% if obj.is_tutor %}
+                    CV: {{ obj.cv_name }}<br>
+                    Native language: {{ obj.native_language }}<br>
+                    Phone: {{ obj.tutordetails.phone_number }}<br>
+                    {% if obj.notice %}
+                        {% live_notify_badge %}
+                        {% live_notify_list %}
+                    {% endif %}
+                {% endif %}
+                {% if obj.website.online %}Online
+                {% else %} Offline | {{ obj.website.last_seen|timesince }} ago{% endif %}
             </p>
-            <p class="column2">
-                Press button to find tutors
-                        <input id="session-name-input" type="hidden" value="{{ obj.user.username }}"/><br/>
-                        <input id="session-name-submit" type="button" value="Session Initialization"/>
-            </p>
+
         </div>
     {% endif %}
-    <script>
-        document.querySelector('#session-name-submit').onclick = function (e) {
-            var sessionName = document.querySelector('#session-name-input').value;
-            window.location.pathname = 'session-initialization/' + sessionName + '/';
-        };
-    </script>
     <script src="{% static 'notifications/notify.js' %}" type="text/javascript"></script>
     {% register_notify_callbacks callbacks='fill_notification_list,fill_notification_badge' %}
-
-
 {% endblock %}

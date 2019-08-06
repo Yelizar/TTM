@@ -138,7 +138,7 @@ p a:hover {
 .searchbar {
 	float: right;
 	display: inline-block;
-	margin: 36px 10px;
+	margin: 10px 10px;
 }
 .searchbar input {
 	float: left;
@@ -146,27 +146,15 @@ p a:hover {
 	margin: 0;
 	padding: 0;
 }
-.searchbar input[type='text'] {
+.searchbar input[type='button'] {
+	cursor: pointer;
 	color: #f8f9f6;
 	font: italic 12px/24px 'OpenSans';
 	height: 24px;
 	width: 77px;
 	padding-left: 4px;
 }
-.searchbar input[type='submit'] {
-	background-position: -91px 0;
-	color: #6a6c67;
-	cursor: pointer;
-	font: italic bold 16px/24px 'OpenSans';
-	height: 24px;
-	width: 60px;
-	padding: 0 0 6px;
-	text-align: center;
-	text-shadow: 1px 0 #fdfbfb;
-}
-.searchbar input[type='submit']:hover {
-	background-position: -161px 0;
-}
+
 /*------------------------------ CONTENTS ------------------------------*/
 #contents {
 	display: inline-block;

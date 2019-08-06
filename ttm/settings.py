@@ -55,7 +55,6 @@ INSTALLED_APPS = [
     # oauth
     'social_django',
     # real-time
-    'channels',
     'notifications'
 
 ]
@@ -245,17 +244,6 @@ SESSION_COOKIE_AGE = 900
 # Check Online Offline user mode
 USER_ONLINE_TIMEOUT = 600
 USER_LASTSEEN_TIMEOUT = 900
-
-ASGI_APPLICATION = 'ttm.routing.application'
-
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
-        },
-    },
-}
 
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

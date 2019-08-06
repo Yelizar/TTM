@@ -3,10 +3,12 @@
     <div id="logo">
         <a href="{% url 'access:home' %}"><img src="{% static 'images/logo.png' %}" alt="LOGO"></a>
     </div>
-    <form action="index.html" method="post" class="searchbar">
-        <input type="text" value="Search" onFocus="this.select();" onMouseUp="return false;">
-        <input type="submit" value="Go">
-    </form>
+{% if request.user.is_authenticated %}
+    <p class="searchbar">
+        <input id="session-name-input" type="hidden" value="{{ obj.website.username }}"/><br/>
+        <a href="{% url 'session:initialization' request.user.username %}"><input id="session-name-submit" type="button" value="Session"/></a>
+    </p>
+{% endif %}
     <ul id="navigation">
         <li>
             <a href="{% url 'access:home' %}">Home</a>
@@ -16,8 +18,12 @@
                 <a href="{% url 'session:profile' request.user.id %}">Profile</a>
             </li>
             <li>
+                <a href="{% url 'access:application' %}">Work on TTM</a>
+            </li>
+            <li>
                 <a href="{% url 'access:logout' %}"> Logout </a>
             </li>
+            <li></li>
         {% else %}
             <li>
                 <a href="{% url 'access:login' %}">Login</a>
@@ -29,6 +35,7 @@
 
     </ul>
 </div>
+
 
 
 

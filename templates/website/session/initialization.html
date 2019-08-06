@@ -1,0 +1,20 @@
+{% extends "website/base.html" %}
+{% block titel %} Session initialization {% endblock %}
+{% block content %}
+    {#  logic of the process will be rebuild after a discussion #}
+    <h5>Session Initialization</h5>
+    <div id="student_details" style="float: left; width: 50%; height: 500px">
+        <table>
+            <tr>
+                <td>
+                    <label id="id_student_name">Student: {{ obj.user.get_full_name }}</label>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label id="id_student_language">Language: {{ obj.native_language }}</label>
+                </td>
+            </tr>
+        </table>
+    </div>
+{% endblock %}

@@ -1,14 +1,9 @@
-from django.shortcuts import render, redirect, reverse, get_object_or_404
-from website.access.models import *
-from django.views.generic import View, UpdateView, CreateView
+from django.shortcuts import render, redirect
+from django.views.generic import View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
 from .models import *
-from django.core.cache import cache
-from django.utils.safestring import mark_safe
-import json
-from django.views.decorators.cache import cache_control, never_cache
-from .forms import SessionCompletionForm
+from .forms import SessionCompletionForm, InitializeForm
 
 
 class ProfileDetailsView(LoginRequiredMixin, View):
@@ -26,13 +21,36 @@ class ProfileDetailsView(LoginRequiredMixin, View):
         return render(request, self.template_name, locals())
 
 
-class SessionInitialization(View):
-    template_name = 'website/session/initialization.html'
+class SessionView(View):
+    template_name = 'website/session/session.html'
 
-    @never_cache
-    def get(self, request, *args, **kwargs):
+    def get(self, request):
         obj = Account.objects.get(website=request.user)
-        Session.objects.create(student_id=obj.id, language=obj.learning_language)
+        try:
+            session = Session.objects.get(student_id=obj.id, is_active=True)
+        except Session.DoesNotExist:
+            form = InitializeForm()
+        return render(request, self.template_name, locals())
+
+    def post(self, request):
+        form = InitializeForm(request.POST)
+        obj = Account.objects.get(website=request.user)
+        if 'cancel' in request.POST:
+            Session.objects.filter(student=obj, is_active=True).update(is_active=False)
+            form = InitializeForm()
+        elif form.is_valid():
+            language = form.cleaned_data.get('language')
+            session = Session.objects.get_or_create(student=obj, language=language, is_active=True)
+            form = None
+        return render(request, self.template_name, locals())
+
+
+class HistoryView(View):
+    template_name = 'website/session/history.html'
+
+    def get(self, request):
+        obj = Account.objects.get(website=request.user)
+        history = Session.objects.filter(student_id=obj.id)
         return render(request, self.template_name, locals())
 
 

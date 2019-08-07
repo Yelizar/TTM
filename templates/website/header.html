@@ -6,7 +6,7 @@
 {% if request.user.is_authenticated %}
     <p class="searchbar">
         <input id="session-name-input" type="hidden" value="{{ obj.website.username }}"/><br/>
-        <a href="{% url 'session:initialization' request.user.username %}"><input id="session-name-submit" type="button" value="Session"/></a>
+        <a href="{% url 'session:session' %}"><input id="session-name-submit" type="button" value="Session"/></a>
     </p>
 {% endif %}
     <ul id="navigation">

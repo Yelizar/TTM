@@ -1,0 +1,23 @@
+{% extends "website/base.html" %}
+{% block titel %} Session {% endblock %}
+{% block content %}
+    {% if form %}
+    <form class="access-form" method="POST" action="{% url 'session:session' %}">
+            {% csrf_token %}
+            {{ form }}
+            <button class="primaryAction" type="submit">Initialize</button>
+    </form>
+    {% elif session %}
+    {{ session.student.website.get_full_name }}, {{ session.language }}
+    <form class="access-form" method="POST" action="{% url 'session:session' %}">
+        {% csrf_token %}
+        <input type="hidden" name="cancel"/>
+        <button class="primaryAction" type="submit">Cancel Session</button>
+    </form>
+    {% endif %}
+    <div class="section">
+        <p class="column2">
+            <a href="{% url 'session:history' %}">History</a>
+        </p>
+    </div>
+{% endblock %}

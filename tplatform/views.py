@@ -357,9 +357,11 @@ class TelegramRequest:
             if 'connect' in data:
                 student_id = data.split(" ")[1]
                 try:
+                    TelegramUser.objects.get(chat_id=student_id)
                     notice_student(student_chat=student_id, account=self.user)
                 except TelegramUser.DoesNotExist:
                     student = Account.objects.get(website_id=student_id)
+                    print(type(student))
                     notify.send(sender=self.user, recipient=student, verb='New session\n',
                                 description='URL', )
                 self.command_handler(cmd='*connect')

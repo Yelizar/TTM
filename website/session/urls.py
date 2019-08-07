@@ -7,6 +7,7 @@ app_name = 'session'
 urlpatterns = [
 
     path('profile/<int:pk>', views.ProfileDetailsView.as_view(), name='profile'),
-    path('initialization/<session_name>/', views.SessionInitialization.as_view(), name='initialization'),
+    path('session/', views.SessionView.as_view(), name='session'),
+    path('history/', views.HistoryView.as_view(), name='history'),
     path('session-completion/<session_id>', views.SessionCompletion.as_view(), name='session-completion')
 ]

@@ -31,10 +31,16 @@ body {
 	/*background: #edefea url(../images/bg-body.jpg) repeat-x left top;*/
 	min-width: 960px;
 	margin: 0;
+
+
 }
 #page {
 	width: 960px;
 	margin: 0 auto;
+	flex-direction: column;
+	display: flex;
+	min-height: 100%;
+	padding-bottom: 50px;
 }
 img {
 	border: 0;
@@ -341,6 +347,8 @@ p a:hover {
 	border-top: 1px solid #cfd5d7;
 	position: absolute;
 	left: 0;
+	bottom: 0;
+	margin-bottom: -10px;
 }
 #footer > div {
 	width: 960px;

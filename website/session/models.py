@@ -51,4 +51,3 @@ class Session(models.Model):
         return '{}'.format(self.student)
 
 
-

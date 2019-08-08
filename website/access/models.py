@@ -4,6 +4,7 @@ import os
 from django.contrib.auth.models import AbstractUser
 from django.core.cache import cache
 from django.db import models
+from django.shortcuts import reverse
 
 from tplatform.models import TelegramUser
 from ttm import settings
@@ -31,6 +32,9 @@ class CustomUser(AbstractUser):
     def online_status(self, online=False):
         self.is_online = True if online else False
         self.save()
+
+    def get_absolute_url(self):
+        return reverse('session:profile', kwargs={'pk': self.pk})
 
 
 def tutor_directory_path(instance, filename):

@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, reverse, HttpResponse
-from django.views import View
+from django.views.generic import View, UpdateView
 from django.contrib.auth import authenticate, login, logout
 from .forms import *
 
@@ -83,18 +83,11 @@ class HomeView(View):
         return render(request, template, locals())
 
 
-class Application(View):
+class Application(UpdateView):
+    model = Account
+    fields = ['native_language', 'phone', 'appear', 'cv']
     template_name = 'website/access/application.html'
 
-    def get(self, request):
-        form = ApplicationFrom()
-        return render(request, self.template_name, locals())
-
-    def post(self, request, *args, **kwargs):
-        instance = Account.objects.get(website=request.user)
-        form = ApplicationFrom(request.POST, instance=instance)
-        if form.is_valid():
-            form.save()
-            return redirect('access:home')
-        return render(request, self.template_name, locals())
+    def get_success_url(self):
+        return reverse('session:profile', kwargs={'pk': self.object.website.id})
 

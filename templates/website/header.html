@@ -18,7 +18,7 @@
                 <a href="{% url 'session:profile' request.user.id %}">Profile</a>
             </li>
             <li>
-                <a href="{% url 'access:application' %}">Work on TTM</a>
+                <a href="{% url 'access:application' request.user.id%}">Work on TTM</a>
             </li>
             <li>
                 <a href="{% url 'access:logout' %}"> Logout </a>

@@ -4,6 +4,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
 from .models import *
 from .forms import SessionCompletionForm, InitializeForm
+from notifications.signals import notify
+from django.utils.html import format_html
 
 
 class ProfileDetailsView(LoginRequiredMixin, View):
@@ -80,5 +82,19 @@ class SessionCompletion(View):
                 redirect('website/session/404.html')
         else:
             return redirect('access:home')
+
+
+def connect_view(request, **kwargs):
+    if request.method == 'GET':
+        student = Account.objects.get(website_id=kwargs['pk'])
+        tutor = request.user
+        url = tutor.get_absolute_url()
+        verb = format_html("<a href='{url}'> Check tutor </a>".format(url=url))
+        notify.send(sender=tutor, recipient=student.website, verb=verb,
+                    description='When student initialize a session. List of tutors receive a notification'
+                                'about new session')
+        return redirect(reverse('session:profile', kwargs={'pk': request.user.id}))
+
+
 
 

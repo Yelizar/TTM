@@ -12,5 +12,5 @@ urlpatterns = [
     path('registration-part-2/', views.RegistrationPart2View.as_view(), name='registration2'),
     path('', include('social_django.urls', namespace='social')),
     path('logout/', views.logout_view, name='logout'),
-    path('application/', views.Application.as_view(), name='application')
+    path('application/<int:pk>/', views.Application.as_view(), name='application')
 ]

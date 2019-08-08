@@ -46,14 +46,3 @@ class LoginForm(forms.ModelForm):
         return username
 
 
-LANGUAGE = (('eng', 'English'),
-            ('rus', 'Russian'))
-
-
-class ApplicationFrom(forms.ModelForm):
-    native_language = forms.ChoiceField(choices=LANGUAGE, widget=forms.Select())
-
-    class Meta:
-        model = Account
-        fields = ['native_language', 'appear', 'phone', 'cv']
-

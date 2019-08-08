@@ -18,7 +18,7 @@
                 {% if obj.is_tutor %}
                     CV: {{ obj.cv_name }}<br>
                     Native language: {{ obj.native_language }}<br>
-                    Phone: {{ obj.tutordetails.phone_number }}<br>
+                    Phone: {{ obj.phone }}<br>
                     {% if obj.notice %}
                         {% live_notify_badge %}
                         {% live_notify_list %}

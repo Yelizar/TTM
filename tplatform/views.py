@@ -55,7 +55,7 @@ def notice_tutors(session):
     Connect - contain session id.
     Skip - remove keyboard
     """
-    tutor_list = Account.objects.filter(notice=True, native_language=session.language)
+    tutor_list = Account.objects.filter(notice=True, native_language=session.language).exclude(telegram=None)
     if session.student.telegram:
         callback_data = session.student.telegram.chat_id
     else:
@@ -325,6 +325,8 @@ class TelegramRequest:
         elif content_type == 'successful_payment':
             self.command_handler(cmd='/start')
             self.save_payment(message['successful_payment'])
+        else:
+            self.command_handler(cmd='/_whaaaat?')
         cache.delete(str(self.user.telegram.chat_id))
 
     @staticmethod
@@ -361,9 +363,9 @@ class TelegramRequest:
                     notice_student(student_chat=student_id, account=self.user)
                 except TelegramUser.DoesNotExist:
                     student = Account.objects.get(website_id=student_id)
-                    print(type(student))
-                    notify.send(sender=self.user, recipient=student, verb='New session\n',
-                                description='URL', )
+                    notify.send(sender=self.user, recipient=student, verb='Tutor to Student',
+                                description='When tutor connected to student. Student receive a notification'
+                                            'from tutors and choose one of those')
                 self.command_handler(cmd='*connect')
             elif data == 'skip':
                 self.command_handler(cmd='*skip')

@@ -1,25 +1,19 @@
 
-from django.db.models.signals import post_save, pre_save
-from django.dispatch import receiver
-from django.core.mail import send_mail
-from website.session.models import Session, Account
-from django.contrib.auth import get_user_model
 from django.conf import settings
-from tplatform.views import notice_tutors
-from notifications.signals import notify
+from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.shortcuts import reverse
 from django.utils.html import format_html
+from notifications.signals import notify
+
+from tplatform.views import notice_tutors
+from website.session.models import Session, Account
 
 
-# @receiver(post_save, sender=ChannelRoom)
-# def session_initialized(sender, instance, created, using, **kwargs):
-#     """
-#     Send notification to a list of tutors who is searching a session
-#     """
-#     if created:
-#         tutor_list = CustomUser.objects.tutor_list()
-#         url = instance.get_absolute_url()
-#         verb = '<a href="{}">Room</a>'.format(url)
-#         notify.send(sender=instance.student, recipient=tutor_list, verb='New session\n' + verb, description='URL',)
+def get_absolute_connect_url(pk):
+    return reverse('session:connect', kwargs={'pk': pk})
 
 
 @receiver(post_save, sender=Session)
@@ -31,7 +25,7 @@ def session_initialized(instance, created, **kwargs):
         notice_tutors(instance)
         student = instance.student
         tutor_list = get_user_model().objects.filter(account__notice=True, account__native_language=instance.language)
-        verb = format_html("<a href='../connect/{student}'>Connect to student</a>".format(student=student.id))
+        verb = format_html("<a href='{url}'>Connect to student</a>".format(url=get_absolute_connect_url(student.id)))
         notify.send(sender=student,
                     recipient=tutor_list,
                     verb=verb,

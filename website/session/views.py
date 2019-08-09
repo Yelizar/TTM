@@ -1,11 +1,14 @@
-from django.shortcuts import render, redirect
-from django.views.generic import View
+from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import render, redirect, HttpResponseRedirect
 from django.utils import timezone
-from .models import *
-from .forms import SessionCompletionForm, InitializeForm
-from notifications.signals import notify
 from django.utils.html import format_html
+from django.views.generic import View
+from notifications.models import Notification
+from notifications.signals import notify
+
+from .forms import SessionCompletionForm, InitializeForm
+from .models import *
 
 
 class ProfileDetailsView(LoginRequiredMixin, View):
@@ -16,6 +19,8 @@ class ProfileDetailsView(LoginRequiredMixin, View):
 
     def get(self, request, *args, **kwargs):
         obj = Account.objects.get(website_id=kwargs['pk'])
+        if 'student' in kwargs:
+            student = Account.objects.get(id=kwargs['student'])
         return render(request, self.template_name, locals())
 
     def post(self, request, *args, **kwargs):
@@ -42,8 +47,8 @@ class SessionView(View):
             form = InitializeForm()
         elif form.is_valid():
             language = form.cleaned_data.get('language')
-            session = Session.objects.get_or_create(student=obj, language=language, is_active=True)
-            form = None
+            session, _ = Session.objects.get_or_create(student=obj, language=language, is_active=True)
+            del form
         return render(request, self.template_name, locals())
 
 
@@ -57,7 +62,6 @@ class HistoryView(View):
 
 
 class SessionCompletion(View):
-
     template_name = 'website/session/session_completion.html'
 
     def get(self, request, *args, **kwargs):
@@ -87,14 +91,12 @@ class SessionCompletion(View):
 def connect_view(request, **kwargs):
     if request.method == 'GET':
         student = Account.objects.get(website_id=kwargs['pk'])
-        tutor = request.user
+        tutor = get_user_model().objects.get(account__id=request.user.id)
+        Notification.objects.filter(unread=True, actor_object_id=student.website_id).mark_all_as_read()
         url = tutor.get_absolute_url()
         verb = format_html("<a href='{url}'> Check tutor </a>".format(url=url))
         notify.send(sender=tutor, recipient=student.website, verb=verb,
                     description='When student initialize a session. List of tutors receive a notification'
                                 'about new session')
-        return redirect(reverse('session:profile', kwargs={'pk': request.user.id}))
-
-
-
-
+        return HttpResponseRedirect(
+            reverse('session:profile_action', kwargs={'pk': request.user.id, 'student': student.id}))

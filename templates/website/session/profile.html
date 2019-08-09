@@ -4,6 +4,9 @@
 {% block titel %} Profile {% endblock %}
 {% block content %}
     <h1>Profile</h1>
+    {% if student %}
+        Your notification has been sent to {{ student.website.username }}
+    {% endif %}
     {% if request.user.id == obj.website.id %}
         <div class="section">
             <p class="column2">

@@ -18,6 +18,12 @@ class ActiveUserMiddleware(MiddlewareMixin):
             now = datetime.datetime.now()
             cache.set('seen_%s' % (current_user.username), now,
                       settings.USER_LASTSEEN_TIMEOUT)
+            # Checks for completeness of sessions
+            initialized_session = InitializedSessions.objects.get_last_session(current_user=current_user)
+            if initialized_session:
+                if request.path != '/session-completion/{}'.format(initialized_session.id):
+                    return redirect(
+                        reverse('session:session-completion', kwargs={'session_id': initialized_session.id}))
 
         # пока нет AJAX выполняет функцию обновления Online Offline status через middleware
         # -----------------------------------------------------------------------------------
@@ -32,10 +38,6 @@ class ActiveUserMiddleware(MiddlewareMixin):
             user.online_status(online=False)
         # -----------------------------------------------------------------------------------
 
-        # Checks for completeness of sessions
-        initialized_session = InitializedSessions.objects.get_last_session(current_user=current_user)
-        if initialized_session:
-            if request.path != '/session-completion/{}'.format(initialized_session.id):
-                return redirect(reverse('session:session-completion', kwargs={'session_id': initialized_session.id}))
+
 
 

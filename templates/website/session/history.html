@@ -1,0 +1,11 @@
+{% extends "website/base.html" %}
+{% block titel %} History {% endblock %}
+{% block content %}
+    <div class="">
+        <p class="column2">
+            {% for history in history.all %}
+                class="">{{ history.student}}  {{ history.tutor }}<br>
+            {% endfor %}
+        </p>
+    </div>
+{% endblock %}

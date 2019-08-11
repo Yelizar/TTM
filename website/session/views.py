@@ -1,33 +1,102 @@
-from django.shortcuts import render, redirect, reverse
-from website.access.models import CustomUser, TutorDetails
-from django.views.generic import View, UpdateView
+from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import render, redirect, HttpResponseRedirect
 from django.utils import timezone
+from django.utils.html import format_html
+from django.views.generic import View
+from notifications.models import Notification
+from notifications.signals import notify
+
+from .forms import SessionCompletionForm, InitializeForm
+from .models import *
 
 
-class ProfileDetailView(LoginRequiredMixin, View):
+class ProfileDetailsView(LoginRequiredMixin, View):
     template_name = 'website/session/profile.html'
-    model = CustomUser
     login_url = 'access:login'
     redirect_field_name = 'login_required'
+    now = timezone.now()
 
     def get(self, request, *args, **kwargs):
-        if request.user.id == kwargs['pk']:
-            now = timezone.now()
-            return render(request, self.template_name, locals())
+        obj = Account.objects.get(website_id=kwargs['pk'])
+        if 'student' in kwargs:
+            student = Account.objects.get(id=kwargs['student'])
+        return render(request, self.template_name, locals())
+
+    def post(self, request, *args, **kwargs):
+        obj = Account.objects.get(website_id=kwargs['pk'])
+        return render(request, self.template_name, locals())
+
+
+class SessionView(View):
+    template_name = 'website/session/session.html'
+
+    def get(self, request):
+        obj = Account.objects.get(website=request.user)
+        try:
+            session = Session.objects.get(student_id=obj.id, is_active=True)
+        except Session.DoesNotExist:
+            form = InitializeForm()
+        return render(request, self.template_name, locals())
+
+    def post(self, request):
+        form = InitializeForm(request.POST)
+        obj = Account.objects.get(website=request.user)
+        if 'cancel' in request.POST:
+            Session.objects.filter(student=obj, is_active=True).update(is_active=False)
+            form = InitializeForm()
+        elif form.is_valid():
+            language = form.cleaned_data.get('language')
+            session, _ = Session.objects.get_or_create(student=obj, language=language, is_active=True)
+            del form
+        return render(request, self.template_name, locals())
+
+
+class HistoryView(View):
+    template_name = 'website/session/history.html'
+
+    def get(self, request):
+        obj = Account.objects.get(website=request.user)
+        history = Session.objects.filter(student_id=obj.id)
+        return render(request, self.template_name, locals())
+
+
+class SessionCompletion(View):
+    template_name = 'website/session/session_completion.html'
+
+    def get(self, request, *args, **kwargs):
+        form = SessionCompletionForm()
+        object = Session.objects.get(id=kwargs['session_id'])
+        return render(request, self.template_name, locals())
+
+    def post(self, request, *args, **kwargs):
+        form = SessionCompletionForm(request.POST)
+        if form.is_valid():
+            try:
+                session = Session.objects.get(id=kwargs['session_id'])
+                # should be rebuild
+                if request.user.role == 'Student':
+                    session.student_confirm = form.cleaned_data.get('confirmed')
+                if session.student_confirm:
+                    session.is_going = False
+                session.rate = form.cleaned_data.get('rate')
+                session.save()
+                return redirect(reverse('session:profile', kwargs={'pk': request.user.id}))
+            except ValueError:
+                redirect('website/session/404.html')
         else:
-            return redirect(reverse('session:profile', kwargs={'pk': request.user.id}))
+            return redirect('access:home')
 
 
-class TutorDetailsUpdateView(UpdateView):
-    model = TutorDetails
-    fields = ['dob', 'short_resume', 'phone_number', 'cv']
-    template_name = 'website/session/update_tutor_details.html'
-
-    def get_success_url(self):
-        print(self.object.user_id)
-        return reverse('session:profile', kwargs={'pk': self.object.user_id})
-
-
-def search_view(request):
-    return render(request, template_name='website/session/search.html')
+def connect_view(request, **kwargs):
+    if request.method == 'GET':
+        student = Account.objects.get(website_id=kwargs['pk'])
+        tutor = get_user_model().objects.get(account__id=request.user.id)
+        Notification.objects.filter(unread=True, actor_object_id=student.website_id).mark_all_as_read()
+        url = tutor.get_absolute_url()
+        verb = format_html("<a href='{url}'> Check tutor </a>".format(url=url))
+        notify.send(sender=tutor, recipient=student.website, verb=verb,
+                    description='When student initialize a session. List of tutors receive a notification'
+                                'about new session')
+        return HttpResponseRedirect(
+            reverse('session:profile_action', kwargs={'pk': request.user.id, 'student': student.id}))

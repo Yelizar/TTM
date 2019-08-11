@@ -1,6 +1,4 @@
 # Environments
 *.pyc
 .env
-.venv
 logs/telegram.bot
-

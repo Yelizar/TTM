@@ -1,21 +1,41 @@
 {% extends "website/base.html" %}
+{% load static %}
 {% block titel %} Home {% endblock %}
 
 {% block content %}
-    <h5> Temporary Home Page </h5>
-    {% if user.is_authenticated %}
-        <p>Logged as {{ user.username }}</p>
-        <button class="primaryAction" type="submit"><a  href="{% url 'session:profile' user.id %}" >Profile</a></button>
-         <button class="primaryAction" type="submit"><a  href="{% url 'access:logout' %}" >
-            Logout </a></button>
-    {% else %}
-        <button class="primaryAction" type="submit"><a href="{% url 'access:registration' %}">Registration</a></button>
-        OR
-        <button class="primaryAction" type="submit"><a href="{% url 'access:login' %}">Login</a></button>
-        <h1>OAuth</h1>
-        <a class="btn btn-primary" href="{% url 'access:social:begin' 'google-oauth2' %}">
-            Login with Gmail
-        </a>
-    {% endif %}
+    <h1>Welcome on Talk To Me</h1>
+			<div class="section">
+				<p class="column2">
+					Students a person who is studying at a university or other place of higher education.
+				</p>
+				<p class="column2">
+                    A tutor, also called an academic tutor, is a person who provides assistance or tutelage to one or more people on certain subject areas or skills.
+				</p>
+			</div>
+			<ul id="categories" class="section">
+				<li>
+					<img src="{% static 'images/gear.png' %}" alt="Img" height="53" width="60">
+					<h3>Session</h3>
+					<p>
+                        Session a meeting of an official body, especially a legislature, council, or court of law, to conduct its business.
+                    </p>
+				</li>
+				<li>
+					<img src="{% static 'images/graph.png' %}" alt="Img" height="53" width="60">
+					<h3>Test</h3>
+					<p>
+                        A test or examination (informally, exam or evaluation) is an assessment intended to measure a test-taker's knowledge, skill, aptitude, physical fitness					</p>
+				</li>
+				<li>
+					<img src="{% static 'images/globe.png' %}" alt="Img" height="53" width="60">
+					<h3>Appear</h3>
+					<p>
+                        Easy video meetings for your business. Start bringing your team and clients together with flexible video meetings
+                    </p>
+				</li>
+			</ul>
+
 
 {% endblock %}
+
+

@@ -17,15 +17,18 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls.static import static
 from django.conf import settings
+import notifications.urls
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('bot/', include('bot.urls')),
     path('api/', include('api.urls')),
+    path('tplatform/', include('tplatform.urls')),
     # temporary "pattern" of url
     path('', include('website.access.urls')),
-    path('', include('website.session.urls'))
+    path('', include('website.session.urls')),
+    path('inbox/notifications/', include(notifications.urls, namespace='notifications')),
 
 ]
 

@@ -1,0 +1,38 @@
+[
+  {
+    "model": "tplatform.payloads",
+    "pk": 1,
+    "fields": {
+      "name": "1_session",
+      "label": "1 session",
+      "amount": 999,
+      "is_active": "True",
+      "created": "2019-07-25 11:42:21.259314",
+      "updated": "2019-07-25 11:42:21.259314"
+    }
+  },
+  {
+    "model": "tplatform.payloads",
+    "pk": 2,
+    "fields": {
+      "name": "5_sessions",
+      "label": "5 session",
+      "amount": 4999,
+      "is_active": "True",
+      "created": "2019-07-25 11:42:21.259314",
+      "updated": "2019-07-25 11:42:21.259314"
+    }
+  },
+    {
+    "model": "tplatform.payloads",
+    "pk": 3,
+    "fields": {
+      "name": "10_sessions",
+      "label": "10 session",
+      "amount": 9999,
+      "is_active": "True",
+      "created": "2019-07-25 11:42:21.259314",
+      "updated": "2019-07-25 11:42:21.259314"
+    }
+  }
+]

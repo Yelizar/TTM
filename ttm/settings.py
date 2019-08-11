@@ -32,7 +32,6 @@ SECRET_KEY = env.str('SECRET_KEY')
 
 ALLOWED_HOSTS = tuple(env.list('ALLOWED_HOSTS', default=[]))
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -48,12 +47,16 @@ INSTALLED_APPS = [
     'api',
     'website.access',
     'website.session',
+    'tplatform',
     # rest apps
     'rest_framework',
     'rest_framework.authtoken',
     'rest_auth',
     # oauth
-    'social_django'
+    'social_django',
+    # real-time
+    'notifications'
+
 ]
 
 MIDDLEWARE = [
@@ -64,6 +67,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'website.access.middleware.ActiveUserMiddleware',
 
 ]
 
@@ -93,16 +97,21 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ttm.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
 
-# DB currently on local machine
 DATABASES = {
     'default': env.db(),
 }
 
+CACHES = {
+    'default': {
+        'BACKEND': env.str('CACHES_BACKEND'),  # https://docs.djangoproject.com/en/2.2/topics/cache/
+        'LOCATION': env.str('CACHES_LOCATION'),  # Read documentation or ask Lazarus
+
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
@@ -122,7 +131,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
 
@@ -136,15 +144,14 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
 
-STATICFILES_DIRS = (
-  os.path.join(BASE_DIR, "static", "dev"),
-)
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static", "dev")
+]
 
 STATIC_ROOT = os.path.join(BASE_DIR, "static", "static_root")
 
@@ -152,8 +159,9 @@ MEDIA_URL = '/media/'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# telegram bot config
+# telegram config
 TELEGRAM_BOT_TOKEN = env.str('TELEGRAM_BOT_TOKEN')
+PAYMENT_PROVIDER_TOKEN = (env.str('PAYMENT_PROVIDER_TOKEN'))
 
 LOGGING = {
     'version': 1,
@@ -232,3 +240,19 @@ LOGOUT_REDIRECT_URL = '/'
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_AGE = 900
+
+# Check Online Offline user mode
+USER_ONLINE_TIMEOUT = 600
+USER_LASTSEEN_TIMEOUT = 900
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+EMAIL_HOST_USER = env.str('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env.str('EMAIL_HOST_PASSWORD')
+
+
+EMAIL_FOR_NOTIFICATION = 'Elik.Drayzer@gmail.com'
+TELEGRAM_ADMIN_CHAT_ID = '189615235'

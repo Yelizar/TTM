@@ -1,0 +1,15 @@
+{% extends "website/base.html" %}
+{% block titel %} Update Details {% endblock %}
+{% block content %}
+    <h4> Update details</h4>
+    {% if user.is_authenticated %}
+     <div>
+        <form class="access-form" method="POST" enctype="multipart/form-data" action="{% url 'access:application' request.user.id%}">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="primaryAction" type="submit">Submit</button>
+        </form>
+    </div>
+    {% endif %}
+
+{% endblock %}

@@ -1,0 +1,18 @@
+[
+  {
+    "model": "session.languages",
+    "pk": 1,
+    "fields": {
+      "language": "English",
+      "is_active": "True"
+    }
+  },
+  {
+    "model": "session.languages",
+    "pk": 2,
+    "fields": {
+      "language": "Russian",
+      "is_active": "True"
+    }
+  }
+]

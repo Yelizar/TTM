@@ -162,6 +162,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # telegram config
 TELEGRAM_BOT_TOKEN = env.str('TELEGRAM_BOT_TOKEN')
+PAYMENT_PROVIDER_TOKEN = (env.str('PAYMENT_PROVIDER_TOKEN'))
 
 LOGGING = {
     'version': 1,

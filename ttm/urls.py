@@ -17,7 +17,6 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls.static import static
 from django.conf import settings
-import notifications.urls
 
 
 urlpatterns = [
@@ -27,8 +26,7 @@ urlpatterns = [
     path('tplatform/', include('tplatform.urls')),
     # temporary "pattern" of url
     path('', include('website.access.urls')),
-    path('', include('website.session.urls')),
-    path('inbox/notifications/', include(notifications.urls, namespace='notifications')),
+    path('', include('website.session.urls'))
 
 ]
 

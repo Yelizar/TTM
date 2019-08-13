@@ -22,7 +22,8 @@ from tplatform.utilit import add_questions, HELLO_STRING
 from website.access.models import Account
 from website.session.models import Session
 from telepot.namedtuple import LabeledPrice
-from notifications.signals import notify
+# from notifications.signals import notify
+# from website.session.utils import notice_student_website
 
 
 TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
@@ -47,7 +48,7 @@ def _display_student_notice(user_info):
         format(name=user_info.telegram.name, language=user_info.native_language)
 
 
-def notice_tutors(session):
+def notice_tutors_telegram(session, created):
     """
     :param session: class. TelegramSession()
     Send notification to all tutors(Notification - ON, Language = Student.language)
@@ -55,26 +56,29 @@ def notice_tutors(session):
     Connect - contain session id.
     Skip - remove keyboard
     """
-    tutor_list = Account.objects.filter(notice=True, native_language=session.language).exclude(telegram=None)
+    tutor_list = Account.objects.filter(notice=True, native_language=session.language).\
+        exclude(telegram=None).\
+        exclude(id=session.student.id)
     if session.student.telegram:
         callback_data = session.student.telegram.chat_id
     else:
         callback_data = session.student.website.id
-    for tutor in tutor_list:
-        TelePot.sendMessage(tutor.telegram.chat_id, _display_tutor_notice(session),
-                            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                                [InlineKeyboardButton(
-                                    text='Connect',
-                                    callback_data='connect {student_chat}'.format(student_chat=callback_data))],
-                                [InlineKeyboardButton(
-                                    text='Skip',
-                                    callback_data='skip')]]))
+    if tutor_list.exists():
+        for tutor in tutor_list:
+            TelePot.sendMessage(tutor.telegram.chat_id, _display_tutor_notice(session),
+                                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                                    [InlineKeyboardButton(
+                                        text='Connect',
+                                        callback_data='connect {student_chat}'.format(student_chat=callback_data))],
+                                    [InlineKeyboardButton(
+                                        text='Skip',
+                                        callback_data='skip')]]))
 
 
-def notice_student(student_chat, account):
+def notice_student_telegram(student_chat, account):
     """
     :param student_chat: str TelegramUser.object.chat_id
-    :param user: class TelegramUser(). Tutor instance who has been sent your details to student
+    :param account: class TelegramUser(). Tutor instance who has been sent your details to student
     :return:
     Send notification to a student from tutor.
     """
@@ -182,7 +186,7 @@ class TelegramRequest:
         self.inline_message = None
         self.internal_commands = {
                                  '_init_session':           (self.initialize_session, None),
-                                 '_cancel_session':         (self.update_session, {'is_active': False}),
+                                 '_cancel_session':         (self.cancel_session, {'is_active': False}),
                                  '_notice_on':              (self.update_user_details, {'notice': True}),
                                  '_notice_off':             (self.update_user_details, {'notice': False}),
                                  '_apply':                  (self.apply, None),
@@ -360,12 +364,10 @@ class TelegramRequest:
                 student_id = data.split(" ")[1]
                 try:
                     TelegramUser.objects.get(chat_id=student_id)
-                    notice_student(student_chat=student_id, account=self.user)
+                    notice_student_telegram(student_chat=student_id, account=self.user)
                 except TelegramUser.DoesNotExist:
                     student = Account.objects.get(website_id=student_id)
-                    notify.send(sender=self.user, recipient=student, verb='Tutor to Student',
-                                description='When tutor connected to student. Student receive a notification'
-                                            'from tutors and choose one of those')
+                    # notice_student_website(tutor=self.user.telegram, student=student)
                 self.command_handler(cmd='*connect')
             elif data == 'skip':
                 self.command_handler(cmd='*skip')
@@ -530,9 +532,17 @@ class TelegramRequest:
             self.session.refresh_from_db()
             self._display_session_details()
         except ValidationError:
-            self.inline_message = "Unknown Error"
+            self.inline_message = "Validation Error"
         except AttributeError:
             self.command_handler(cmd='/root')
+
+    def cancel_session(self, details):
+        # Use save() method to call signal
+        self.session = Session.objects.get(student=self.user, is_active=True)
+        self.session.is_active = details['is_active']
+        self.session.save()
+        self.session.refresh_from_db()
+        self._display_session_details()
 
     def initialize_session(self):
         """

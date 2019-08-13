@@ -2,10 +2,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect, HttpResponseRedirect
 from django.utils import timezone
-from django.utils.html import format_html
 from django.views.generic import View
-from notifications.models import Notification
-from notifications.signals import notify
+from .utils import *
 
 from .forms import SessionCompletionForm, InitializeForm
 from .models import *
@@ -43,7 +41,10 @@ class SessionView(View):
         form = InitializeForm(request.POST)
         obj = Account.objects.get(website=request.user)
         if 'cancel' in request.POST:
-            Session.objects.filter(student=obj, is_active=True).update(is_active=False)
+            # Use save() method to call signal
+            session = Session.objects.get(student=obj, is_active=True)
+            session.is_active = False
+            session.save()
             form = InitializeForm()
         elif form.is_valid():
             language = form.cleaned_data.get('language')
@@ -90,13 +91,8 @@ class SessionCompletion(View):
 
 def connect_view(request, **kwargs):
     if request.method == 'GET':
-        student = Account.objects.get(website_id=kwargs['pk'])
         tutor = get_user_model().objects.get(account__id=request.user.id)
-        Notification.objects.filter(unread=True, actor_object_id=student.website_id).mark_all_as_read()
-        url = tutor.get_absolute_url()
-        verb = format_html("<a href='{url}'> Check tutor </a>".format(url=url))
-        notify.send(sender=tutor, recipient=student.website, verb=verb,
-                    description='When student initialize a session. List of tutors receive a notification'
-                                'about new session')
+        student = Account.objects.get(website_id=kwargs['pk'])
+        # notice_student_website(tutor=tutor, student=student)
         return HttpResponseRedirect(
             reverse('session:profile_action', kwargs={'pk': request.user.id, 'student': student.id}))

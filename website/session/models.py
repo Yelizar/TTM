@@ -51,3 +51,17 @@ class Session(models.Model):
         return '{}'.format(self.student)
 
 
+class Notifications(models.Model):
+    sender = models.ForeignKey(Account, related_name='Sender',
+                               on_delete=models.CASCADE)
+    recipient = models.ForeignKey(Account, related_name="Recipient",
+                                  on_delete=models.CASCADE)
+    session = models.ForeignKey(Session, on_delete=models.CASCADE)
+    message = models.CharField(max_length=1024, blank=True, null=True)
+    is_read = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now=False, auto_now_add=True)
+
+    def mark_as_read(self):
+        if self.is_read is False:
+            self.is_read = True
+            self.save()

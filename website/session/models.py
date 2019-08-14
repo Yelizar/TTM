@@ -1,15 +1,13 @@
 from django.db import models
-from django.conf import settings
 from website.access.models import Account
-from .managers import ChannelRoomManager, ChannelNamesManager, SessionCoinsManager, SessionManager
-from django.urls import reverse
+from .managers import SessionCoinsManager, SessionManager
 
 
 class SessionCoins(models.Model):
     """
     This model will be completely reworked when fee payment is implemented.
     """
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.OneToOneField(Account, on_delete=models.CASCADE)
     coins = models.PositiveSmallIntegerField('Coins', help_text="1 coin = 1 session", default=0)
 
     is_active = models.BooleanField(default=True)
@@ -33,8 +31,8 @@ class Session(models.Model):
                               on_delete=models.CASCADE, blank=True, null=True)
     language = models.CharField(max_length=64, blank=True, null=True)
 
-    student_confirm = models.BooleanField(default=False)
-    tutor_confirm = models.BooleanField(default=False)
+    student_confirm = models.NullBooleanField()
+    tutor_confirm = models.NullBooleanField()
     is_going = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     rate = models.PositiveSmallIntegerField("Session Rate", help_text='Default 5 starts', default=5)
@@ -65,3 +63,13 @@ class Notifications(models.Model):
         if self.is_read is False:
             self.is_read = True
             self.save()
+
+
+class Payments(models.Model):
+    user = models.ForeignKey(Account, on_delete=models.CASCADE)
+    currency = models.CharField(max_length=4)
+    payload = models.CharField(max_length=64, help_text='Name of purchase')
+    provider = models.TextField(help_text='Provider payment charger id')
+    total = models.FloatField(help_text='Total price')
+
+    created = models.DateTimeField(auto_now=False, auto_now_add=True)

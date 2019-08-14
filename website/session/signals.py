@@ -7,7 +7,7 @@ from django.shortcuts import reverse
 from django.utils.html import format_html
 
 from tplatform.views import notice_tutors_telegram
-from website.session.models import Session, Notifications
+from website.session.models import Session, Notifications, SessionCoins
 from website.access.models import Account
 
 
@@ -40,10 +40,13 @@ def applicant(instance, created, **kwargs):
     """
     Send notification to admin when tutor is applied
     """
+    if created:
+        SessionCoins.objects.create(user=instance)
     if not created:
-        subject = 'New Tutor'
-        message = 'Hi Admin, {name} applied as a tutor. Email of user - {email}'.format(name=instance.website.first_name,
-                                                                                    email=instance.website.email)
-        email_from = settings.EMAIL_HOST_USER
-        recipient_list = [settings.EMAIL_FOR_NOTIFICATION]
-        send_mail(subject, message, email_from, recipient_list)
+        if instance.website:
+            subject = 'New Tutor'
+            message = 'Hi Admin, {name} applied as a tutor. Email of user - {email}'.format(name=instance.website.first_name,
+                                                                                        email=instance.website.email)
+            email_from = settings.EMAIL_HOST_USER
+            recipient_list = [settings.EMAIL_FOR_NOTIFICATION]
+            send_mail(subject, message, email_from, recipient_list)

@@ -17,12 +17,11 @@ from django.views.generic import View
 from telepot.namedtuple import InlineKeyboardButton, InlineKeyboardMarkup
 from django.db.models import Q
 
-from tplatform.models import TelegramUser, TelegramTest, Payloads, Payments
+from tplatform.models import TelegramUser, TelegramTest, Payloads
 from tplatform.utilit import add_questions, HELLO_STRING
 from website.access.models import Account
-from website.session.models import Session
+from website.session.models import Session, Payments, SessionCoins
 from telepot.namedtuple import LabeledPrice
-from notifications.signals import notify
 
 
 TelePot = telepot.Bot(settings.TELEGRAM_BOT_TOKEN)
@@ -47,7 +46,7 @@ def _display_student_notice(user_info):
         format(name=user_info.telegram.name, language=user_info.native_language)
 
 
-def notice_tutors(session):
+def notice_tutors_telegram(session, created):
     """
     :param session: class. TelegramSession()
     Send notification to all tutors(Notification - ON, Language = Student.language)
@@ -55,26 +54,29 @@ def notice_tutors(session):
     Connect - contain session id.
     Skip - remove keyboard
     """
-    tutor_list = Account.objects.filter(notice=True, native_language=session.language).exclude(telegram=None)
+    tutor_list = Account.objects.filter(notice=True, native_language=session.language).\
+        exclude(telegram=None).\
+        exclude(id=session.student.id)
     if session.student.telegram:
         callback_data = session.student.telegram.chat_id
     else:
         callback_data = session.student.website.id
-    for tutor in tutor_list:
-        TelePot.sendMessage(tutor.telegram.chat_id, _display_tutor_notice(session),
-                            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                                [InlineKeyboardButton(
-                                    text='Connect',
-                                    callback_data='connect {student_chat}'.format(student_chat=callback_data))],
-                                [InlineKeyboardButton(
-                                    text='Skip',
-                                    callback_data='skip')]]))
+    if tutor_list.exists():
+        for tutor in tutor_list:
+            TelePot.sendMessage(tutor.telegram.chat_id, _display_tutor_notice(session),
+                                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                                    [InlineKeyboardButton(
+                                        text='Connect',
+                                        callback_data='connect {student_chat}'.format(student_chat=callback_data))],
+                                    [InlineKeyboardButton(
+                                        text='Skip',
+                                        callback_data='skip')]]))
 
 
-def notice_student(student_chat, account):
+def notice_student_telegram(student_chat, account):
     """
     :param student_chat: str TelegramUser.object.chat_id
-    :param user: class TelegramUser(). Tutor instance who has been sent your details to student
+    :param account: class TelegramUser(). Tutor instance who has been sent your details to student
     :return:
     Send notification to a student from tutor.
     """
@@ -102,6 +104,18 @@ def notice_tutor(tutor):
                             )]]))
 
 
+def session_confirm(session):
+    users_set = [session.student, session.tutor]
+    for user in users_set:
+        if user.telegram:
+            TelePot.sendMessage(user.telegram.chat_id,
+                                "Session complied\nStudent rate: {rate}\n"
+                                "Student confirm: {sc}\nTutor confirm: {tc}".format(
+                                    rate=session.rate, sc=session.student_confirm, tc=session.tutor_confirm
+                                ))
+
+
+
 class TelegramRequest:
     COMMANDS = {
         '/start': (_display_help, (('Placement', '*placement'),
@@ -125,6 +139,7 @@ class TelegramRequest:
 
         '*talk_to_me': ("👨‍🎓Student Profile", (('Settings', '*s_settings'),
                                             ('Session', '*s_session'),
+                                            ('Details', '_details'),
                                             ('Payment', '*payment'))),
         '*payment': ("Choose package", (('1 Session', '_invoice#1_session'),
                                         ('5 Sessions', '_invoice#5_sessions'),
@@ -142,6 +157,7 @@ class TelegramRequest:
                                          {'session': ('is_active', True)})],
         '*teach_for_us': ["Tutor Profile", None, ((('Apply', '_apply'),
                                                    ('Notification', '*notification'),
+                                                   ('Details', '_details'),
                                                    ('Settings', '*t_settings')),
                                                   {'user': ('is_tutor', False)})],
         '*notification': ['Notification settings', None, ((('On', '_notice_on'),
@@ -182,10 +198,11 @@ class TelegramRequest:
         self.inline_message = None
         self.internal_commands = {
                                  '_init_session':           (self.initialize_session, None),
-                                 '_cancel_session':         (self.update_session, {'is_active': False}),
+                                 '_cancel_session':         (self.cancel_session, {'is_active': False}),
                                  '_notice_on':              (self.update_user_details, {'notice': True}),
                                  '_notice_off':             (self.update_user_details, {'notice': False}),
                                  '_apply':                  (self.apply, None),
+                                 '_details':                (self._display_user_details, None),
                                  '_continue_test':          (self.continue_test, None),
                                  '_history_session':        (self._display_session_history, None),
                                  '_display_result':         (self._display_test_result, None),
@@ -196,8 +213,8 @@ class TelegramRequest:
                                  '_session_terrible':       (self.update_session, {'student_confirm': True, 'rate': 3,
                                                                                    'is_active': False, 'is_going': False}),
                                  '_session_done':           (self.update_session, {'tutor_confirm': True}),
-                                 '_t_session_canceled':     (self.update_session, {'tutor_confirm': True, 'rate': 0}),
-                                 '_s_session_canceled':     (self.update_session, {'student_confirm': True, 'rate': 0,
+                                 '_t_session_canceled':     (self.update_session, {'tutor_confirm': False}),
+                                 '_s_session_canceled':     (self.update_session, {'student_confirm': False, 'rate': 0,
                                                                                    'is_active': False, 'is_going': False})
                                 }
         self.fork()
@@ -290,7 +307,8 @@ class TelegramRequest:
                                         text=self.response[0],
                                         reply_markup=reply_markup)
             except telepot.exception.TelegramError:
-                self.inline_message = self.response[0]
+                # self.inline_message = self.response[0]
+                pass
         elif isinstance(self.response[0], types.FunctionType):
             # send a message below inline buttons
             TelePot.sendMessage(self.user.telegram.chat_id,
@@ -360,12 +378,10 @@ class TelegramRequest:
                 student_id = data.split(" ")[1]
                 try:
                     TelegramUser.objects.get(chat_id=student_id)
-                    notice_student(student_chat=student_id, account=self.user)
+                    notice_student_telegram(student_chat=student_id, account=self.user)
                 except TelegramUser.DoesNotExist:
                     student = Account.objects.get(website_id=student_id)
-                    notify.send(sender=self.user, recipient=student, verb='Tutor to Student',
-                                description='When tutor connected to student. Student receive a notification'
-                                            'from tutors and choose one of those')
+                    # notice_student_website(tutor=self.user.telegram, student=student)
                 self.command_handler(cmd='*connect')
             elif data == 'skip':
                 self.command_handler(cmd='*skip')
@@ -522,27 +538,45 @@ class TelegramRequest:
         :return: True or False
         """
         try:
-            if self.session is None:
-                self.session = Session.objects.active_session(self.user)
-            Session.objects.filter(
-                Q(student=self.user, is_active=True) |
-                Q(tutor=self.user, tutor_confirm=False)).update(**details)
+            self.session = Session.objects.active_session(self.user).first()
+            Session.objects.active_session(self.user).update(**details)
             self.session.refresh_from_db()
-            self._display_session_details()
+            flow = self.coins_flow()
+            if flow is False:
+                self._display_session_details(inline='Session status has been changed')
         except ValidationError:
-            self.inline_message = "Unknown Error"
+            self.inline_message = "Validation Error"
         except AttributeError:
             self.command_handler(cmd='/root')
+
+    def cancel_session(self, details):
+        # Use save() method to call signal
+        self.session = Session.objects.get(student=self.user, is_active=True)
+        self.session.is_active = details['is_active']
+        self.session.save()
+        self.session.refresh_from_db()
+        self._display_session_details(inline='Session has been canceled')
 
     def initialize_session(self):
         """
         :return: class Session and True if created() False if get()
         """
-        self.session, is_created = Session.objects.get_or_create(student=self.user,
-                                                                         language=self.user.learning_language,
-                                                                         is_active=True)
-        if is_created:
-            self._display_session_details()
+        if self.user.sessioncoins.coins > 0:
+            if self.user.learning_language:
+                print(self.user.learning_language)
+                self.session, is_created = Session.objects.get_create_timeout(current_user=self.user,
+                                                                              language=self.user.learning_language)
+                if isinstance(is_created, bool):
+                    inline = 'Session has been initialized'
+                elif isinstance(is_created, int):
+                    inline = 'Please wait {time} seconds'.format(time=is_created)
+                else:
+                    inline = 'You already have an active session'
+            else:
+                inline = 'Please set up learning language'
+        else:
+            inline = 'You don\'t have enough coins'
+        self._display_session_details(inline=inline)
 
     def update_handler(self, details):
         for name, val in details.items():
@@ -552,9 +586,9 @@ class TelegramRequest:
             self.inline_message = '{name}: {val}'.format(name=name, val=val)
 
     def session_confirmation_handler(self):
-        if self.user.pk == self.session.tutor.pk and self.session.tutor_confirm is False:
+        if self.user.pk == self.session.tutor.pk and self.session.tutor_confirm is None:
             self.command_handler(cmd='*t_confirm_session')
-        elif self.user.pk == self.session.student.pk and self.session.student_confirm is False:
+        elif self.user.pk == self.session.student.pk and self.session.student_confirm is None:
             self.command_handler(cmd='*s_confirm_session')
         self.response[0] = self.string_session_details()
 
@@ -605,29 +639,42 @@ class TelegramRequest:
         last_question = '*q{i}'.format(i=str(obj.current_question))
         self.response = ('You have test in progress', [('I am ready!', last_question)])
 
+    def coins_flow(self):
+        if self.session.student_confirm and self.session.tutor_confirm:
+            if self.session.student_confirm is True and self.session.tutor_confirm is True:
+                SessionCoins.objects.coins_operation(student=self.session.student, tutor=self.session.tutor)
+            session_confirm(self.session)
+        else:
+            return False
+
     def string_tutor_details(self):
         cv = None
         if self.user.cv:
             cv = 'Uploaded'
         details = 'Name: {name}\nNotification: {notice}\nNative language: {n_lng}\n' \
-                  'Appear: {appear}\nPhone: {phone}\nCV: {cv}'.format(
+                  'Appear: {appear}\nPhone: {phone}\nCV: {cv}\nBalance: {bln}'.format(
                     name=self.user.telegram.name, notice=self._notice_handler(self.user.notice),
                     n_lng=self.user.native_language, appear=self.user.appear,
-                    phone=self.user.phone, cv=cv)
+                    phone=self.user.phone, cv=cv, bln=self.user.sessioncoins.coins)
         return details
 
     def string_student_details(self):
-        details = 'Name: {name}\nNative language: {n_lng}\nLearning Language: {l_lng}'.format(
-                    name=self.user.telegram.name, n_lng=self.user.native_language, l_lng=self.user.learning_language)
+        details = 'Name: {name}\nNative language: {n_lng}\nLearning Language: {l_lng}\nBalance: {bln}'.format(
+                    name=self.user.telegram.name, n_lng=self.user.native_language, l_lng=self.user.learning_language,
+                    bln=self.user.sessioncoins.coins)
         return details
 
     def string_session_details(self):
-        details = 'Session\nLanguage: {lng}\nInitialized: {active}\nTutor: {tutor}'.format(
-                lng=str(self.session.language), active=str(self.session.is_active), tutor=self.session.tutor)
-        if self.session.is_going is True:
-            details += '\nStudent confirm: {s}\nTutor confirm: {t}'.format(
-                s=self.session.student_confirm, t=self.session.tutor_confirm)
-        return details
+        try:
+            details = 'Session\nLanguage: {lng}\nInitialized: {active}\nTutor: {tutor}'.format(
+                    lng=str(self.session.language), active=str(self.session.is_active), tutor=self.session.tutor)
+            if self.session.is_going is True:
+                details += '\nStudent confirm: {s}\nTutor confirm: {t}'.format(
+                    s=self.session.student_confirm, t=self.session.tutor_confirm)
+            print(details)
+            return details
+        except AttributeError:
+            return 'You don\'t have an active session\nPlease check your balance and set up learning language'
 
     def _display_user_details(self):
         self.message_id = cache.get(str('message_id_{}'.format(self.user.telegram.chat_id)))
@@ -638,13 +685,13 @@ class TelegramRequest:
             self.response[0] = self.string_tutor_details()
         else:
             self.command_handler(self.root.split('#')[-1])
-            if self.root.split('#')[-2] == '*s_settings':
+            if self.root.split('#')[2] == '*talk_to_me':
                 self.response[0] = self.string_student_details()
             else:
                 self.response[0] = self.string_tutor_details()
 
-    def _display_session_details(self):
-        self.inline_message = 'Session Status has been changed'
+    def _display_session_details(self, inline):
+        self.inline_message = inline
         if 'confirm' in self.root:
             self.response = [None, [['Appear', '{url}'.format(url=self.session.tutor.appear)]]]
         else:

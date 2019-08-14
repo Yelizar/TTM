@@ -48,12 +48,3 @@ class Payloads(models.Model):
     updated = models.DateTimeField(auto_now=True, auto_now_add=False)
 
 
-class Payments(models.Model):
-    user = models.ForeignKey(TelegramUser, on_delete=models.CASCADE)
-    currency = models.CharField(max_length=4)
-    payload = models.CharField(max_length=64, help_text='Name of purchase')
-    provider = models.TextField(help_text='Provider payment charger id')
-    total = models.FloatField(help_text='Total price')
-
-    created = models.DateTimeField(auto_now=False, auto_now_add=True)
-

@@ -2,102 +2,37 @@ from website.access.models import Account
 from django.db import models
 from django.db.models import Q
 from django.db import DataError
-
-
-class ChannelRoomManager(models.Manager):
-    """
-    Managers methods for consumer.
-    """
-
-    def get_or_new(self, username):
-        account = Account.objects.get(user__username=username)
-        room = self.filter(student__username=account.user.username, is_active=True)
-        if room:
-            return room.first(), False
-        else:
-            obj = self.model(student=account.user, is_active=True)
-            obj.save()
-            return obj, True
-
-    def add_visitor(self, username, room):
-        account = Account.objects.get(user__username=username)
-        obj = self.get(id=room.id)
-        if obj:
-            obj.tutor.add(account)
-            obj.save()
-            return True
-        else:
-            return False
-
-    def remove_visitor(self, username, room):
-        account = Account.objects.get(user__username=username)
-        obj = self.get(id=room.id)
-        if obj:
-            obj.tutor.remove(account)
-            obj.save()
-            return True
-        else:
-            return False
-
-
-    def close(self, room):
-        obj = self.filter(id=room.id, is_active=True)
-        if obj:
-            for o in obj:
-                o.delete()
-                return True
-        return False
-
-
-class ChannelNamesManager(models.Manager):
-    """
-    Managers methods for consumer.
-    """
-
-    def get_one(self, channel_id):
-        obj = self.filter(channel_id=channel_id, is_active=True)
-        if obj:
-            return obj.first(), False
-        return False
-
-    def disable(self, channel_id):
-        obj = self.filter(channel_id=channel_id, is_active=True)
-        if obj:
-            for o in obj:
-                o.delete()
-                return True
-        return False
+from datetime import datetime, timezone
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class SessionCoinsManager(models.Manager):
 
-    def coin_operations(self, user_id, operation=None, quantity=1):
-        obj = self.get(user_id=user_id)
-        if obj:
-            try:
-                if operation == "add":
-                    obj.coins += quantity
-                if operation == "remove":
-                    obj.coins -= quantity
-                obj.save()
-                return True
-            except DataError:
-                return False
-        return False
+    def coins_operation(self, student, tutor, quantity=1):
+        student = self.get(user=student)
+        tutor = self.get(user=tutor)
+        try:
+            student.coins -= quantity
+            tutor.coins += quantity
+            student.save()
+            tutor.save()
+            return True
+        except DataError:
+            return False
 
 
 class SessionManager(models.Manager):
 
     def active_session(self, current_user):
         obj_set = self.filter(Q(student_id=current_user.id, is_active=True)
-                              | Q(tutor_id=current_user.id, tutor_confirm=False))
+                              | Q(tutor_id=current_user.id, tutor_confirm=None))
         if obj_set:
-            return obj_set.first()
+            return obj_set
         return None
 
     def get_last_session(self, current_user):
-        obj_set = self.filter(Q(student_id=current_user.id, is_going=True, student_confirm=False)
-                        | Q(tutor_id=current_user.id, tutor_confirm=False))
+        obj_set = self.filter(Q(student_id=current_user.id, is_going=True, student_confirm=None)
+                        | Q(tutor_id=current_user.id, tutor_confirm=None))
         if obj_set:
             return obj_set.first()
         return None
@@ -106,4 +41,22 @@ class SessionManager(models.Manager):
         obj_set = self.filter(Q(student_id=current_user.id)
                         | Q(tutor_id=current_user.id))
         return obj_set
+
+    def get_create_timeout(self, current_user, language):
+        try:
+            obj = self.get(student=current_user, language=language, is_active=True)
+            return obj, None
+        except ObjectDoesNotExist:
+            obj_set = self.filter(student=current_user)
+            if obj_set.exists():
+                obj = obj_set.last()
+                timeout = datetime.now(timezone.utc) - obj.updated
+                if timeout.total_seconds() < 10:
+                    return obj, (10 - int(timeout.total_seconds()))
+            obj = self.create(student=current_user, language=language, is_active=True)
+            return obj, True
+
+
+
+
 

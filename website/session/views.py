@@ -3,8 +3,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect, HttpResponseRedirect, reverse
 from django.utils import timezone
 from django.views.generic import View
-from .utils import *
-
 from .forms import SessionCompletionForm, InitializeForm
 from .models import *
 

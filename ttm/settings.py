@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
+import sys
 import environ
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -99,9 +100,22 @@ WSGI_APPLICATION = 'ttm.wsgi.application'
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
 
+# DATABASES = {
+#     'default': env.db(),
+# }
 DATABASES = {
-    'default': env.db(),
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'ttm',
+        'USER': 'laz',
+        'PASSWORD': 'laz',
+        'HOST': 'db',
+        'PORT': 5432,
+    }
 }
+
+if 'test' in sys.argv or 'test_coverage' in sys.argv:
+    DATABASES['default']['ENGINE'] = 'django.db.backends.sqlite3'
 
 CACHES = {
     'default': {

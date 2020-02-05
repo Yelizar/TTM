@@ -12,6 +12,7 @@ from django.utils import timezone
 
 class ActiveUserMiddleware(MiddlewareMixin):
 
+    @staticmethod
     def process_request(self, request):
         current_user = request.user
         if current_user.is_authenticated:
